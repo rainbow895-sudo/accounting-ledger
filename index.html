@@ -27,10 +27,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 .site-header{background:var(--ink);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:58px;border-bottom:2px solid var(--gold);}
 .site-logo{font-family:var(--serif);font-size:19px;font-weight:700;color:var(--gold-light);letter-spacing:.1em;display:flex;align-items:center;gap:10px;}
 .site-logo i{font-size:21px;color:var(--gold);}
-.sync-status{font-size:12px;display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;border:1px solid rgba(240,217,128,.3);color:rgba(240,217,128,.7);}
+.sync-status{font-size:12px;display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;border:1px solid rgba(240,217,128,.3);color:rgba(240,217,128,.7);white-space:nowrap;}
 .sync-status.ok{color:#6fcf97;border-color:rgba(111,207,151,.4);}
 .sync-status.err{color:#eb5757;border-color:rgba(235,87,87,.4);}
 .sync-status.loading{color:var(--gold-light);}
+.sync-status.offline{color:rgba(240,217,128,.6);border-color:rgba(240,217,128,.25);}
 .tabs-bar{background:var(--ink-mid);display:flex;align-items:center;gap:2px;padding:0 2rem;overflow-x:auto;}
 .tab-btn{padding:10px 16px;font-size:13px;font-family:var(--sans);background:transparent;border:none;color:rgba(240,217,128,.55);cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;transition:all .15s;}
 .tab-btn:hover{color:var(--gold-light);}
@@ -120,7 +121,7 @@ tr.pr td{background:var(--blue-light);}
 <header class="site-header">
   <div class="site-logo"><i class="ti ti-building-temple"></i>北極殿帳務管理系統</div>
   <div style="display:flex;align-items:center;gap:8px;">
-    <span class="sync-status loading" id="sync-status"><i class="ti ti-cloud"></i>連接中…</span>
+    <span class="sync-status offline" id="sync-status"><i class="ti ti-cloud"></i>待連線</span>
     <button class="btn ghost" onclick="exportExcel()"><i class="ti ti-file-spreadsheet"></i>匯出 Excel</button>
   </div>
 </header>
@@ -368,14 +369,26 @@ function entryToNotion(e, acctLabel){
 }
 
 // ── Load from Notion ──────────────────────────────────────
+const NOTION_TIMEOUT_MS = 8000; // 8秒超時
+
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error('連線逾時')), ms))
+  ]);
+}
+
 async function loadFromNotion(){
-  setStatus('loading','同步中…');
+  setStatus('loading','連線 Notion…');
   try {
     let all=[], cursor=undefined;
     while(true){
       const body={page_size:100};
       if(cursor) body.start_cursor=cursor;
-      const res=await notionReq('POST','/v1/databases/'+NOTION_DB+'/query',body);
+      const res=await withTimeout(
+        notionReq('POST','/v1/databases/'+NOTION_DB+'/query',body),
+        NOTION_TIMEOUT_MS
+      );
       all=all.concat(res.results);
       if(!res.has_more) break;
       cursor=res.next_cursor;
@@ -387,13 +400,19 @@ async function loadFromNotion(){
       if(key && db[key]) db[key].push(e);
     });
     ACCT_KEYS.forEach(a=>sortEntries(db[a]));
-    setStatus('ok','已同步 Notion');
+    setStatus('ok','✓ 已同步');
     return true;
   } catch(err){
-    const isPreview = window.location.hostname.includes('claude') || window.location.hostname === 'localhost' || window.location.protocol==='blob:';
-    const msg = isPreview ? '預覽模式（上傳 GitHub 後可用）' : '同步失敗，請重試';
-    setStatus('err', msg);
-    console.error(err);
+    console.warn('Notion 連線失敗:', err.message);
+    // 判斷環境：非 GitHub Pages 環境顯示離線模式
+    const host = window.location.hostname;
+    const isGitHub = host.includes('github.io');
+    if(isGitHub){
+      setStatus('err','同步失敗－請重試');
+    } else {
+      // claude.ai 預覽 / 本機 / 手機預覽 → 離線模式，不顯示紅色錯誤
+      setStatus('offline','離線模式');
+    }
     return false;
   }
 }
@@ -811,9 +830,16 @@ function exportExcel(){
 
 // ── Init ──────────────────────────────────────────────────
 loadFixed();
-loadFromNotion().then(()=>{
-  ACCT_KEYS.forEach(a=>{ updateFilter(a); renderAcct(a); });
-  renderFixed();
+// 先立刻顯示頁面（離線也能操作）
+switchTab('query');
+ACCT_KEYS.forEach(a=>{ updateFilter(a); renderAcct(a); });
+renderFixed();
+// 背景嘗試同步 Notion
+loadFromNotion().then(ok=>{
+  if(ok){
+    // 同步成功後更新所有分頁資料
+    ACCT_KEYS.forEach(a=>{ updateFilter(a); renderAcct(a); });
+  }
 });
 </script>
 </body>
