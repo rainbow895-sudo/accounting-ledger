@@ -3,844 +3,838 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>北極殿帳務管理系統</title>
+<title>北極殿帳務管理系統 v2</title>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/tabler-icons.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
 :root{
-  --gold:#B8972A;--gold-light:#F0D980;--gold-dim:#7A621C;
-  --ink:#1A1209;--ink-mid:#3D2E0F;--ink-soft:#7A6840;
-  --paper:#FBF6EC;--paper-mid:#F2E8D0;--paper-dark:#E4D5B0;
+  --gold:#B8972A;
+  --gold-light:#F0D980;
+  --ink:#1A1209;
+  --ink-mid:#3D2E0F;
+  --paper:#FBF6EC;
+  --paper-mid:#F2E8D0;
+  --paper-dark:#E4D5B0;
   --bg:#EDE3CC;
-  --green:#1A6B3C;--green-light:#E8F5EE;
-  --blue:#1A3A6B;--blue-light:#E8EEF5;
-  --red:#C0392B;--red-light:#FDE8E8;
-  --shadow:0 2px 12px rgba(90,60,10,0.12);
+  --green:#1A6B3C;
+  --red:#C0392B;
+  --blue:#1A3A6B;
+  --shadow:0 2px 12px rgba(90,60,10,.12);
   --radius:6px;
-  --serif:'Noto Serif TC',serif;
   --sans:'Noto Sans TC',sans-serif;
+  --serif:'Noto Serif TC',serif;
 }
-body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:100vh;}
-.site-header{background:var(--ink);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:58px;border-bottom:2px solid var(--gold);}
-.site-logo{font-family:var(--serif);font-size:19px;font-weight:700;color:var(--gold-light);letter-spacing:.1em;display:flex;align-items:center;gap:10px;}
-.site-logo i{font-size:21px;color:var(--gold);}
-.sync-status{font-size:12px;display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;border:1px solid rgba(240,217,128,.3);color:rgba(240,217,128,.7);white-space:nowrap;}
-.sync-status.ok{color:#6fcf97;border-color:rgba(111,207,151,.4);}
-.sync-status.err{color:#eb5757;border-color:rgba(235,87,87,.4);}
-.sync-status.loading{color:var(--gold-light);}
-.sync-status.offline{color:rgba(240,217,128,.6);border-color:rgba(240,217,128,.25);}
-.tabs-bar{background:var(--ink-mid);display:flex;align-items:center;gap:2px;padding:0 2rem;overflow-x:auto;}
-.tab-btn{padding:10px 16px;font-size:13px;font-family:var(--sans);background:transparent;border:none;color:rgba(240,217,128,.55);cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;transition:all .15s;}
-.tab-btn:hover{color:var(--gold-light);}
-.tab-btn.active{color:var(--gold-light);border-bottom-color:var(--gold);font-weight:500;}
-.main{max-width:1100px;margin:0 auto;padding:1.5rem 1rem 3rem;}
-.summary-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:1.5rem;}
-.sum-card{background:var(--paper);border:1px solid var(--paper-dark);border-radius:var(--radius);padding:1rem 1.25rem;box-shadow:var(--shadow);}
-.sum-card.hl{background:var(--ink);border-color:var(--gold-dim);}
-.sum-label{font-size:11px;color:var(--ink-soft);margin-bottom:5px;display:flex;align-items:center;gap:4px;letter-spacing:.04em;}
-.sum-card.hl .sum-label{color:var(--gold-dim);}
-.sum-value{font-family:var(--serif);font-size:18px;font-weight:700;color:var(--ink);}
-.sum-card.hl .sum-value{color:var(--gold-light);}
-.sum-value.g{color:var(--green);}
-.sum-value.r{color:var(--red);}
-.sum-value.b{color:var(--blue);}
-.panel{background:var(--paper);border:1px solid var(--paper-dark);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:1.25rem;overflow:hidden;}
-.panel-hdr{background:var(--paper-mid);padding:.7rem 1.25rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--paper-dark);flex-wrap:wrap;gap:8px;}
-.panel-title{font-family:var(--serif);font-size:13px;font-weight:600;color:var(--ink-mid);display:flex;align-items:center;gap:7px;}
-.panel-title i{color:var(--gold);}
-.panel-body{padding:1rem 1.25rem;}
-.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px;align-items:end;}
-.fg{display:flex;flex-direction:column;gap:4px;}
-.fg label{font-size:11px;color:var(--ink-soft);font-weight:500;letter-spacing:.04em;}
-.fg input,.fg select,.fg textarea{height:34px;padding:0 9px;border:1px solid var(--paper-dark);border-radius:var(--radius);background:var(--paper);color:var(--ink);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .15s,box-shadow .15s;width:100%;}
-.fg textarea{height:60px;padding:7px 9px;resize:vertical;}
-.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,151,42,.15);}
-/* 民國日期選擇器 */
-.roc-date-wrap{display:flex;gap:4px;align-items:center;}
-.roc-date-wrap select{height:34px;padding:0 4px;border:1px solid var(--paper-dark);border-radius:var(--radius);background:var(--paper);color:var(--ink);font-size:13px;font-family:var(--sans);outline:none;flex:1;}
-.roc-date-wrap select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,151,42,.15);}
-.btn{padding:0 13px;height:34px;border-radius:var(--radius);border:1px solid var(--paper-dark);background:var(--paper);color:var(--ink);cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:5px;font-family:var(--sans);transition:all .15s;white-space:nowrap;}
-.btn:hover{background:var(--paper-mid);}
-.btn:disabled{opacity:.5;cursor:not-allowed;}
-.btn.primary{background:var(--ink-mid);color:var(--gold-light);border-color:var(--ink-mid);}
-.btn.primary:hover{background:var(--ink);}
-.btn.export{background:#1A6B3C;color:#E8F5EE;border-color:#1A6B3C;}
-.btn.export:hover{background:#0F4A29;}
-.btn.danger{background:transparent;color:var(--red);border-color:transparent;padding:0 7px;height:26px;font-size:12px;}
-.btn.danger:hover{background:var(--red-light);}
-.btn.ghost{background:transparent;border-color:rgba(184,151,42,.4);color:rgba(240,217,128,.8);}
-.btn.ghost:hover{background:rgba(184,151,42,.1);}
-.table-wrap{overflow-x:auto;}
-table{width:100%;border-collapse:collapse;font-size:13px;}
-th{background:var(--paper-mid);color:var(--ink-soft);font-size:11px;font-weight:500;letter-spacing:.04em;padding:7px 9px;text-align:left;border-bottom:1px solid var(--paper-dark);}
-td{padding:7px 9px;border-bottom:1px solid rgba(180,155,100,.2);color:var(--ink);vertical-align:middle;word-break:break-word;}
-tr:last-child td{border-bottom:none;}
-tr.dr:hover td{background:rgba(184,151,42,.05);}
-tr.pr td{background:var(--blue-light);}
-.ni{color:var(--green);font-weight:500;}
-.no{color:var(--red);font-weight:500;}
-.np{color:var(--blue);font-weight:600;}
-.nn{color:var(--red);font-weight:600;}
-.mu{color:var(--ink-soft);}
-.empty-state{text-align:center;padding:2.5rem 1rem;color:var(--ink-soft);}
-.empty-state i{font-size:32px;display:block;margin-bottom:8px;opacity:.3;}
-.mbar{display:flex;align-items:center;gap:8px;}
-.mbar select{height:30px;padding:0 8px;border:1px solid var(--paper-dark);border-radius:var(--radius);background:var(--paper);color:var(--ink);font-size:12px;font-family:var(--sans);}
-.report-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;}
-.rcard{background:var(--paper);border:1px solid var(--paper-dark);border-radius:var(--radius);padding:1rem;box-shadow:var(--shadow);}
-.rcard-title{font-family:var(--serif);font-weight:700;color:var(--ink-mid);margin-bottom:.6rem;padding-bottom:.4rem;border-bottom:1px solid var(--paper-dark);display:flex;justify-content:space-between;}
-.rrow{display:flex;justify-content:space-between;font-size:12px;padding:2px 0;}
-.rrow .rl{color:var(--ink-soft);}
-.rrow .rv{font-weight:500;}
-.divider{height:1px;background:var(--paper-dark);margin:.5rem 0;}
-.search-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;}
-.search-bar input,.search-bar select{height:36px;padding:0 10px;border:1px solid var(--paper-dark);border-radius:var(--radius);background:var(--paper);color:var(--ink);font-size:13px;font-family:var(--sans);outline:none;}
-.search-bar input{flex:1;min-width:140px;}
-.search-bar input:focus,.search-bar select:focus{border-color:var(--gold);}
-.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:20px;font-weight:500;}
-.tag.in{background:var(--green-light);color:var(--green);}
-.tag.out{background:var(--red-light);color:var(--red);}
-.tag.prev{background:var(--blue-light);color:var(--blue);}
-@keyframes spin{to{transform:rotate(360deg)}}
-.spin{animation:spin .7s linear infinite;display:inline-block;}
-@media(max-width:600px){
-  .site-header{padding:0 1rem;}
-  .tabs-bar{padding:0 1rem;}
-  .main{padding:1rem .75rem 2rem;}
-  table{font-size:12px;}
-  th,td{padding:6px 7px;}
-  .roc-date-wrap{flex-wrap:wrap;}
+
+body{
+  background:var(--bg);
+  font-family:var(--sans);
+  color:var(--ink);
+}
+
+.site-header{
+  background:var(--ink);
+  color:var(--gold-light);
+  height:58px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 1rem;
+  border-bottom:2px solid var(--gold);
+}
+
+.site-logo{
+  font-family:var(--serif);
+  font-size:20px;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.tabs{
+  background:var(--ink-mid);
+  display:flex;
+  overflow:auto;
+}
+
+.tab{
+  border:none;
+  background:none;
+  color:#d9c78f;
+  padding:12px 16px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+.tab.active{
+  background:rgba(255,255,255,.05);
+  border-bottom:2px solid var(--gold);
+}
+
+.main{
+  max-width:1200px;
+  margin:auto;
+  padding:1rem;
+}
+
+.panel{
+  background:var(--paper);
+  border:1px solid var(--paper-dark);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  margin-bottom:1rem;
+  overflow:hidden;
+}
+
+.panel-h{
+  background:var(--paper-mid);
+  padding:.8rem 1rem;
+  font-weight:600;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.panel-b{
+  padding:1rem;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:10px;
+}
+
+.fg{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.fg label{
+  font-size:12px;
+}
+
+input,select{
+  height:36px;
+  border:1px solid var(--paper-dark);
+  border-radius:var(--radius);
+  padding:0 10px;
+  background:white;
+}
+
+button{
+  border:none;
+  cursor:pointer;
+}
+
+.btn{
+  height:36px;
+  border-radius:var(--radius);
+  padding:0 14px;
+  background:var(--ink-mid);
+  color:var(--gold-light);
+}
+
+.table-wrap{
+  overflow:auto;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+th{
+  background:var(--paper-mid);
+  padding:8px;
+  font-size:12px;
+  text-align:left;
+}
+
+td{
+  padding:8px;
+  border-bottom:1px solid #ddd;
+  font-size:13px;
+}
+
+.sum-row{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:10px;
+  margin-bottom:1rem;
+}
+
+.sum{
+  background:var(--paper);
+  border:1px solid var(--paper-dark);
+  padding:1rem;
+  border-radius:var(--radius);
+}
+
+.sum-title{
+  font-size:12px;
+  margin-bottom:6px;
+}
+
+.sum-val{
+  font-size:20px;
+  font-weight:700;
+}
+
+.green{color:var(--green)}
+.red{color:var(--red)}
+.blue{color:var(--blue)}
+
+.empty{
+  text-align:center;
+  padding:2rem;
+  color:#888;
 }
 </style>
 </head>
+
 <body>
 
 <header class="site-header">
-  <div class="site-logo"><i class="ti ti-building-temple"></i>北極殿帳務管理系統</div>
-  <div style="display:flex;align-items:center;gap:8px;">
-    <span class="sync-status offline" id="sync-status"><i class="ti ti-cloud"></i>待連線</span>
-    <button class="btn ghost" onclick="exportExcel()"><i class="ti ti-file-spreadsheet"></i>匯出 Excel</button>
+  <div class="site-logo">
+    <i class="ti ti-building-temple"></i>
+    北極殿帳務管理系統
+  </div>
+
+  <div style="display:flex;gap:8px;align-items:center">
+    <span id="sync-status">同步中...</span>
+    <button class="btn" onclick="exportExcel()">
+      匯出 Excel
+    </button>
   </div>
 </header>
 
-<nav class="tabs-bar">
-  <button class="tab-btn active" onclick="switchTab('query')" data-tab="query"><i class="ti ti-search" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>查詢</button>
-  <button class="tab-btn" onclick="switchTab('lingyon')" data-tab="lingyon"><i class="ti ti-wallet" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>零用金（採購）</button>
-  <button class="tab-btn" onclick="switchTab('nonghu')" data-tab="nonghu"><i class="ti ti-pig-money" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>農會儲簿</button>
-  <button class="tab-btn" onclick="switchTab('taiqiye')" data-tab="taiqiye"><i class="ti ti-building-bank" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>台企儲簿</button>
-  <button class="tab-btn" onclick="switchTab('fixed')" data-tab="fixed"><i class="ti ti-lock" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>定存 / 特殊</button>
-  <button class="tab-btn" onclick="switchTab('report')" data-tab="report"><i class="ti ti-chart-bar" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>月報總表</button>
-  <button class="tab-btn" onclick="switchTab('jijin')" data-tab="jijin"><i class="ti ti-star" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>基金會</button>
+<nav class="tabs">
+  <button class="tab active" data-tab="nonghu">農會儲簿</button>
+  <button class="tab" data-tab="taiqiye">台企儲簿</button>
+  <button class="tab" data-tab="cash">零用金</button>
+  <button class="tab" data-tab="jijin">基金會</button>
+  <button class="tab" data-tab="fixed">定存</button>
+  <button class="tab" data-tab="query">查詢</button>
+  <button class="tab" data-tab="report">月報</button>
 </nav>
 
 <main class="main">
-  <div id="tab-nonghu" class="tab-pane" style="display:none"></div>
-  <div id="tab-taiqiye" class="tab-pane" style="display:none"></div>
-  <div id="tab-lingyon" class="tab-pane" style="display:none"></div>
-  <div id="tab-jijin" class="tab-pane" style="display:none"></div>
 
-  <!-- 定存 / 特殊 -->
-  <div id="tab-fixed" class="tab-pane" style="display:none">
-    <div class="summary-row" id="fixed-stats"></div>
-    <div class="panel">
-      <div class="panel-hdr"><span class="panel-title"><i class="ti ti-plus"></i>新增 / 更新定存與特殊科目</span></div>
-      <div class="panel-body">
-        <div class="form-grid">
-          <div class="fg"><label>民國年月</label><input type="text" id="fx-month" placeholder="107.01"/></div>
-          <div class="fg"><label>科目／商家</label>
-            <select id="fx-key">
-              <option value="B">台企定期（B）</option>
-              <option value="C">農會定期（C）</option>
-              <option value="D">金龜現金（D）</option>
-              <option value="E">信徒借款（E）</option>
-            </select>
-          </div>
-          <div class="fg"><label>金額</label><input type="number" id="fx-amount" placeholder="0" min="0"/></div>
-          <div class="fg"><label>備註</label><input type="text" id="fx-note" placeholder="陳文雄…"/></div>
-          <div class="fg"><label>&nbsp;</label><button class="btn primary" id="fx-add-btn" onclick="addFixed()"><i class="ti ti-plus"></i>新增</button></div>
-        </div>
-      </div>
-    </div>
-    <div class="panel">
-      <div class="panel-hdr"><span class="panel-title"><i class="ti ti-list"></i>定存 / 特殊科目明細</span></div>
-      <div class="table-wrap">
-        <table><thead><tr>
-          <th style="width:80px">年月</th><th style="width:160px">科目／商家</th>
-          <th style="width:130px">金額</th><th>備註</th><th style="width:44px"></th>
-        </tr></thead><tbody id="fx-tbody"></tbody></table>
-      </div>
-    </div>
-  </div>
+<div id="content"></div>
 
-  <!-- 月報總表 -->
-  <div id="tab-report" class="tab-pane" style="display:none">
-    <div class="panel">
-      <div class="panel-hdr">
-        <span class="panel-title"><i class="ti ti-chart-bar"></i>月報總表</span>
-        <button class="btn export" onclick="exportExcel()"><i class="ti ti-file-spreadsheet"></i>匯出 Excel</button>
-      </div>
-      <div class="panel-body" id="report-content"></div>
-    </div>
-  </div>
-
-  <!-- 查詢分頁 -->
-  <div id="tab-query" class="tab-pane" style="display:none">
-    <div class="panel">
-      <div class="panel-hdr"><span class="panel-title"><i class="ti ti-search"></i>查詢明細</span>
-        <button class="btn primary" onclick="runQuery()"><i class="ti ti-search"></i>查詢</button>
-      </div>
-      <div class="panel-body">
-        <div class="search-bar">
-          <select id="q-acct">
-            <option value="">全部帳戶</option>
-            <option value="農會儲簿">農會儲簿</option>
-            <option value="台企儲簿">台企儲簿</option>
-            <option value="零用金（採購）">零用金（採購）</option>
-            <option value="基金會">基金會</option>
-          </select>
-          <select id="q-type">
-            <option value="">全部類型</option>
-            <option value="收入">收入</option>
-            <option value="支出">支出</option>
-            <option value="上期結存">上期結存</option>
-          </select>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <label style="font-size:12px;color:var(--ink-soft);white-space:nowrap">起始</label>
-            <input type="date" id="q-date-from"
-              style="height:36px;padding:0 8px;border:1px solid var(--paper-dark);border-radius:var(--radius);
-                     background:var(--paper);color:var(--ink);font-size:13px;font-family:var(--sans);
-                     outline:none;cursor:pointer;"
-              onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
-          </div>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <label style="font-size:12px;color:var(--ink-soft);white-space:nowrap">結束</label>
-            <input type="date" id="q-date-to"
-              style="height:36px;padding:0 8px;border:1px solid var(--paper-dark);border-radius:var(--radius);
-                     background:var(--paper);color:var(--ink);font-size:13px;font-family:var(--sans);
-                     outline:none;cursor:pointer;"
-              onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
-          </div>
-          <input type="text" id="q-keyword" placeholder="科目／商家 / 摘要關鍵字"/>
-        </div>
-        <div id="query-stats" style="display:none" class="summary-row"></div>
-      </div>
-    </div>
-    <div class="panel">
-      <div class="panel-hdr"><span class="panel-title"><i class="ti ti-list"></i>查詢結果</span>
-        <span id="query-count" class="mu" style="font-size:12px"></span>
-      </div>
-      <div class="table-wrap">
-        <table><thead><tr>
-          <th style="width:85px">日期</th>
-          <th style="width:90px">帳戶</th>
-          <th style="width:110px">科目／商家</th>
-          <th>摘要</th>
-          <th style="width:75px">類型</th>
-          <th style="width:105px">金額</th>
-        </tr></thead>
-        <tbody id="query-tbody"><tr><td colspan="6"><div class="empty-state"><i class="ti ti-search"></i><p>請設定條件後點「查詢」</p></div></td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
 </main>
 
 <script>
-// ── Notion Config ─────────────────────────────────────────
-const NOTION_TOKEN = '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';
-const NOTION_DB    = '36b7643f12338038b874d7426e9de566';
-const NOTION_VER   = '2022-06-28';
 
-async function notionReq(method, path, body){
-  // Try multiple CORS proxies in order
-  const PROXIES = [
-    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    u => `https://cors-anywhere.herokuapp.com/${u}`,
-  ];
-  const targetUrl = 'https://api.notion.com' + path;
-  const options = {
-    method,
+const API_URL =
+'https://script.google.com/macros/s/AKfycbyibqhJWV1SR9kZSLrXsE6D_Wmc7YAvmTPkrmPdzXr4-Cvr_IXsQBWl69zpw4tqcLDF/exec';
+
+const ACCOUNT_LABELS = {
+  nonghu:'農會儲簿',
+  taiqiye:'台企儲簿',
+  cash:'零用金',
+  jijin:'基金會'
+};
+
+const TYPE_LABELS = {
+  income:'收入',
+  expense:'支出',
+  prev:'上期結存'
+};
+
+let db = {
+  nonghu:[],
+  taiqiye:[],
+  cash:[],
+  jijin:[],
+  fixed:[]
+};
+
+let currentTab = 'nonghu';
+
+function money(n){
+  return '$'+Number(n||0).toLocaleString('zh-TW');
+}
+
+function setStatus(text){
+  document.getElementById('sync-status').textContent=text;
+}
+
+async function apiGet(params={}){
+
+  const url = new URL(API_URL);
+
+  Object.keys(params).forEach(k=>{
+    url.searchParams.append(k,params[k]);
+  });
+
+  const res = await fetch(url);
+
+  return await res.json();
+}
+
+async function apiPost(data={}){
+
+  const res = await fetch(API_URL,{
+    method:'POST',
     headers:{
-      'Authorization':'Bearer '+NOTION_TOKEN,
-      'Notion-Version': NOTION_VER,
       'Content-Type':'application/json'
     },
-    body: body ? JSON.stringify(body) : undefined
-  };
-  let lastErr;
-  for(const makeUrl of PROXIES){
-    try{
-      const res = await fetch(makeUrl(targetUrl), options);
-      if(!res.ok){ const e=await res.text(); throw new Error('HTTP '+res.status+': '+e.slice(0,200)); }
-      return res.json();
-    } catch(e){ lastErr=e; }
-  }
-  throw new Error('無法連線 Notion API：'+lastErr.message);
+    body:JSON.stringify(data)
+  });
+
+  return await res.json();
 }
 
-// ── Constants ─────────────────────────────────────────────
-const ACCT_META = {
-  nonghu:  { label:'農會儲簿',       incLabel:'收入',      expLabel:'支出' },
-  taiqiye: { label:'台企儲簿',       incLabel:'收入',      expLabel:'支出' },
-  lingyon: { label:'零用金（採購）',  incLabel:'收入／借入', expLabel:'支出／採購' },
-  jijin:   { label:'基金會',         incLabel:'收入',      expLabel:'支出' },
-};
-const ACCT_KEYS = ['nonghu','taiqiye','lingyon','jijin'];
-const LABEL_TO_KEY = {};
-Object.entries(ACCT_META).forEach(([k,v])=>{ LABEL_TO_KEY[v.label]=k; });
-const FIXED_LABELS = {B:'台企定期（B）',C:'農會定期（C）',D:'金龜現金（D）',E:'信徒借款（E）'};
-const TYPE_MAP  = { income:'收入', expense:'支出', prev:'上期結存' };
-const TYPE_MAP_R = { '收入':'income','支出':'expense','上期結存':'prev' };
+function rocToday(){
 
-let db = { nonghu:[], taiqiye:[], lingyon:[], jijin:[], fixed:[] };
+  const d = new Date();
 
-// ── 民國日期工具（使用原生日曆） ─────────────────────────
-// 西元 → 民國：yyyy.mm.dd
-function adToRoc(adStr){
-  if(!adStr) return '';
-  const [y,m,d] = adStr.split('-');
-  return `${parseInt(y)-1911}.${m}.${d}`;
-}
-// 民國 → 西元（給 input[type=date] 使用）
-function rocToAd(rocStr){
-  if(!rocStr) return '';
-  const parts = rocStr.split('.');
-  if(parts.length<3) return '';
-  const y = String(parseInt(parts[0])+1911);
-  return `${y}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
-}
-function buildRocDatePicker(idPrefix){
-  const today = new Date().toISOString().slice(0,10);
-  return `<div style="position:relative;display:inline-block;">
-    <input type="date" id="${idPrefix}-date-native"
-      value="${today}"
-      style="height:34px;padding:0 9px;border:1px solid var(--paper-dark);border-radius:var(--radius);
-             background:var(--paper);color:var(--ink);font-size:13px;font-family:var(--sans);
-             outline:none;width:160px;cursor:pointer;"
-      onfocus="this.style.borderColor='var(--gold)';this.style.boxShadow='0 0 0 3px rgba(184,151,42,.15)'"
-      onblur="this.style.borderColor='var(--paper-dark)';this.style.boxShadow='none'"
-    />
-  </div>`;
-}
-function getDateVal(pfx){
-  const native = document.getElementById(pfx+'-date-native');
-  if(!native||!native.value) return '';
-  return adToRoc(native.value);
-}
-function updateDays(pfx){
-  // no-op: native date picker handles this
-  const y = 0, m = 0;
-  // native date picker auto-handles days
+  return `${d.getFullYear()-1911}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// ── Status ────────────────────────────────────────────────
-function setStatus(state, msg){
-  const el=document.getElementById('sync-status');
-  el.className='sync-status '+state;
-  el.innerHTML=`<i class="ti ti-cloud${state==='loading'?' spin':''}"></i>${msg}`;
-}
+async function loadData(){
 
-// ── Notion helpers ────────────────────────────────────────
-function pageToEntry(page){
-  const p = page.properties;
-  const getText = k => p[k]?.rich_text?.[0]?.plain_text || p[k]?.title?.[0]?.plain_text || '';
-  const getNum  = k => p[k]?.number ?? 0;
-  const getSel  = k => p[k]?.select?.name || '';
-  return { id:page.id, date:getText('日期'), subj:getText('科目'), note:getText('摘要'),
-           type:TYPE_MAP_R[getSel('類型')]||'income', amount:getNum('金額'), acct:getSel('帳戶') };
-}
-function entryToNotion(e, acctLabel){
-  return {
-    parent:{ database_id:NOTION_DB },
-    properties:{
-      '名稱': { title:[{text:{content:e.subj||e.date||'無名稱'}}] },
-      '日期': { rich_text:[{text:{content:e.date||''}}] },
-      '科目': { rich_text:[{text:{content:e.subj||''}}] },
-      '摘要': { rich_text:[{text:{content:e.note||''}}] },
-      '類型': { select:{name:TYPE_MAP[e.type]||'收入'} },
-      '金額': { number:e.amount||0 },
-      '帳戶': { select:{name:acctLabel} },
-    }
-  };
-}
+  setStatus('同步中...');
 
-// ── Load from Notion ──────────────────────────────────────
-const NOTION_TIMEOUT_MS = 8000; // 8秒超時
+  try{
 
-function withTimeout(promise, ms){
-  return Promise.race([
-    promise,
-    new Promise((_,rej)=>setTimeout(()=>rej(new Error('連線逾時')), ms))
-  ]);
-}
-
-async function loadFromNotion(){
-  setStatus('loading','連線 Notion…');
-  try {
-    let all=[], cursor=undefined;
-    while(true){
-      const body={page_size:100};
-      if(cursor) body.start_cursor=cursor;
-      const res=await withTimeout(
-        notionReq('POST','/v1/databases/'+NOTION_DB+'/query',body),
-        NOTION_TIMEOUT_MS
-      );
-      all=all.concat(res.results);
-      if(!res.has_more) break;
-      cursor=res.next_cursor;
-    }
-    db={nonghu:[],taiqiye:[],lingyon:[],jijin:[],fixed:db.fixed};
-    all.forEach(page=>{
-      const e=pageToEntry(page);
-      const key=LABEL_TO_KEY[e.acct];
-      if(key && db[key]) db[key].push(e);
+    const res = await apiGet({
+      action:'listAccounts'
     });
-    ACCT_KEYS.forEach(a=>sortEntries(db[a]));
-    setStatus('ok','✓ 已同步');
-    return true;
-  } catch(err){
-    console.warn('Notion 連線失敗:', err.message);
-    // 判斷環境：非 GitHub Pages 環境顯示離線模式
-    const host = window.location.hostname;
-    const isGitHub = host.includes('github.io');
-    if(isGitHub){
-      setStatus('err','同步失敗－請重試');
-    } else {
-      // claude.ai 預覽 / 本機 / 手機預覽 → 離線模式，不顯示紅色錯誤
-      setStatus('offline','離線模式');
-    }
-    return false;
+
+    db.nonghu=[];
+    db.taiqiye=[];
+    db.cash=[];
+    db.jijin=[];
+
+    res.data.forEach(r=>{
+
+      if(!db[r.account]) return;
+
+      db[r.account].push(r);
+
+    });
+
+    const fixedRes = await apiGet({
+      action:'listFixed'
+    });
+
+    db.fixed = fixedRes.data;
+
+    setStatus('✓ 已同步');
+
+    render();
+
+  }catch(err){
+
+    console.error(err);
+
+    setStatus('同步失敗');
   }
 }
 
-// ── CRUD ──────────────────────────────────────────────────
-function sortEntries(arr){
-  arr.sort((a,b)=>{
-    if(a.type==='prev'&&b.type!=='prev') return -1;
-    if(b.type==='prev'&&a.type!=='prev') return 1;
-    return (a.date||'').localeCompare(b.date||'');
+function calcBalance(rows){
+
+  let b = 0;
+
+  rows.forEach(r=>{
+
+    if(r.type==='prev') b = Number(r.amount);
+
+    else if(r.type==='income') b += Number(r.amount);
+
+    else b -= Number(r.amount);
+
   });
-}
-function fmtMoney(n){
-  if(n===null||n===undefined||n==='') return '—';
-  return '$'+Math.round(n).toLocaleString('zh-TW');
+
+  return b;
 }
 
-async function addEntry(acct){
-  const date   = getDateVal(acct);
-  const subj   = document.getElementById(acct+'-subj').value.trim();
-  const note   = document.getElementById(acct+'-note').value.trim();
-  const type   = document.getElementById(acct+'-type').value;
-  const amount = parseFloat(document.getElementById(acct+'-amount').value);
-  if(!date||!subj||isNaN(amount)||amount<0){ alert('請填寫科目／商家與金額'); return; }
-  const btn=document.getElementById(acct+'-add-btn');
-  btn.disabled=true; btn.innerHTML='<i class="ti ti-loader spin"></i>儲存中…';
-  try {
-    const entry={date,subj,note,type,amount};
-    const res=await notionReq('POST','/v1/pages',entryToNotion(entry,ACCT_META[acct].label));
-    entry.id=res.id;
-    db[acct].push(entry);
-    sortEntries(db[acct]);
-    renderAcct(acct);
-    document.getElementById(acct+'-subj').value='';
-    document.getElementById(acct+'-note').value='';
-    document.getElementById(acct+'-amount').value='';
-    setStatus('ok','已儲存');
-  } catch(e){ alert('儲存失敗：'+e.message); setStatus('err','儲存失敗'); }
-  btn.disabled=false; btn.innerHTML='<i class="ti ti-plus"></i>新增';
+function render(){
+
+  if(currentTab==='fixed') return renderFixed();
+
+  if(currentTab==='query') return renderQuery();
+
+  if(currentTab==='report') return renderReport();
+
+  renderAccount(currentTab);
 }
 
-async function removeEntry(acct,id){
-  if(!confirm('確定刪除這筆資料？')) return;
-  try {
-    await notionReq('PATCH','/v1/pages/'+id,{archived:true});
-    db[acct]=db[acct].filter(e=>e.id!==id);
-    renderAcct(acct);
-    setStatus('ok','已刪除');
-  } catch(e){ alert('刪除失敗：'+e.message); }
-}
+function renderAccount(acct){
 
-// ── Fixed (localStorage) ──────────────────────────────────
-function addFixed(){
-  const month=document.getElementById('fx-month').value.trim();
-  const key=document.getElementById('fx-key').value;
-  const amount=parseFloat(document.getElementById('fx-amount').value);
-  const note=document.getElementById('fx-note').value.trim();
-  if(!month||isNaN(amount)){ alert('請填寫年月與金額'); return; }
-  db.fixed.push({id:Date.now(),month,key,amount,note});
-  db.fixed.sort((a,b)=>a.month.localeCompare(b.month)||a.key.localeCompare(b.key));
-  saveFixed(); renderFixed();
-  document.getElementById('fx-amount').value='';
-  document.getElementById('fx-note').value='';
-}
-function removeFixed(id){ if(!confirm('確定刪除？')) return; db.fixed=db.fixed.filter(e=>e.id!==id); saveFixed(); renderFixed(); }
-function saveFixed(){ try{ localStorage.setItem('beiji_fixed',JSON.stringify(db.fixed)); }catch(e){} }
-function loadFixed(){ try{ const s=localStorage.getItem('beiji_fixed'); if(s) db.fixed=JSON.parse(s); }catch(e){} }
+  const rows = db[acct];
 
-// ── Build account tab HTML ────────────────────────────────
-function buildAcctTab(acct){
-  const m=ACCT_META[acct];
-  return `
-    <div class="summary-row" id="${acct}-stats"></div>
-    <div class="panel">
-      <div class="panel-hdr">
-        <span class="panel-title"><i class="ti ti-plus"></i>新增明細</span>
-        <div class="mbar">
-          <button class="btn" style="height:30px;font-size:12px" onclick="loadFromNotion().then(()=>{ ACCT_KEYS.forEach(a=>{updateFilter(a);renderAcct(a);}); })"><i class="ti ti-refresh"></i>重新整理</button>
-          <select id="${acct}-filter" onchange="renderAcct('${acct}')"><option value="">全部月份</option></select>
-        </div>
-      </div>
-      <div class="panel-body">
-        <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));">
-          <div class="fg" style="min-width:170px"><label>日期（日曆選取，顯示民國）</label>${buildRocDatePicker(acct)}</div>
-          <div class="fg" style="min-width:120px"><label>科目／商家</label><input type="text" id="${acct}-subj" placeholder="農會利息、全聯"/></div>
-          <div class="fg" style="min-width:120px"><label>摘要</label><input type="text" id="${acct}-note" placeholder="詳細說明" onkeydown="if(event.key==='Enter') addEntry('${acct}')"/></div>
-          <div class="fg"><label>類型</label>
-            <select id="${acct}-type">
-              <option value="income">${m.incLabel}</option>
-              <option value="expense">${m.expLabel}</option>
-              <option value="prev">上期結存</option>
-            </select>
-          </div>
-          <div class="fg"><label>金額</label><input type="number" id="${acct}-amount" placeholder="0" min="0" onkeydown="if(event.key==='Enter') addEntry('${acct}')"/></div>
-          <div class="fg"><label>&nbsp;</label><button class="btn primary" id="${acct}-add-btn" onclick="addEntry('${acct}')"><i class="ti ti-plus"></i>新增</button></div>
-        </div>
-      </div>
+  const income =
+    rows.filter(r=>r.type==='income')
+    .reduce((s,r)=>s+Number(r.amount),0);
+
+  const expense =
+    rows.filter(r=>r.type==='expense')
+    .reduce((s,r)=>s+Number(r.amount),0);
+
+  const balance = calcBalance(rows);
+
+  document.getElementById('content').innerHTML = `
+
+  <div class="sum-row">
+
+    <div class="sum">
+      <div class="sum-title">收入</div>
+      <div class="sum-val green">${money(income)}</div>
     </div>
-    <div class="panel">
-      <div class="panel-hdr"><span class="panel-title"><i class="ti ti-list"></i>${m.label}明細</span></div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th style="width:85px">日期</th>
-            <th style="width:110px">科目／商家</th>
-            <th>摘要</th>
-            <th style="width:105px">${m.incLabel}</th>
-            <th style="width:105px">${m.expLabel}</th>
-            <th style="width:110px">餘額</th>
-            <th style="width:44px"></th>
-          </tr></thead>
-          <tbody id="${acct}-tbody"></tbody>
-        </table>
+
+    <div class="sum">
+      <div class="sum-title">支出</div>
+      <div class="sum-val red">${money(expense)}</div>
+    </div>
+
+    <div class="sum">
+      <div class="sum-title">結存</div>
+      <div class="sum-val blue">${money(balance)}</div>
+    </div>
+
+  </div>
+
+  <div class="panel">
+
+    <div class="panel-h">
+      新增明細
+    </div>
+
+    <div class="panel-b">
+
+      <div class="grid">
+
+        <div class="fg">
+          <label>日期</label>
+          <input id="date" value="${rocToday()}"/>
+        </div>
+
+        <div class="fg">
+          <label>科目 / 商家</label>
+          <input id="subject"/>
+        </div>
+
+        <div class="fg">
+          <label>摘要</label>
+          <input id="note"/>
+        </div>
+
+        <div class="fg">
+          <label>類型</label>
+
+          <select id="type">
+            <option value="income">收入</option>
+            <option value="expense">支出</option>
+            <option value="prev">上期結存</option>
+          </select>
+
+        </div>
+
+        <div class="fg">
+          <label>金額</label>
+          <input type="number" id="amount"/>
+        </div>
+
+        <div class="fg">
+          <label>&nbsp;</label>
+          <button class="btn" onclick="addAccount('${acct}')">
+            新增
+          </button>
+        </div>
+
       </div>
-    </div>`;
+
+    </div>
+
+  </div>
+
+  <div class="panel">
+
+    <div class="panel-h">
+      ${ACCOUNT_LABELS[acct]} 明細
+    </div>
+
+    <div class="table-wrap">
+
+      <table>
+
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th>科目</th>
+            <th>摘要</th>
+            <th>類型</th>
+            <th>金額</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+        ${
+          rows.length
+          ?
+          rows.map(r=>`
+            <tr>
+              <td>${r.date}</td>
+              <td>${r.subject||''}</td>
+              <td>${r.note||''}</td>
+              <td>${TYPE_LABELS[r.type]}</td>
+              <td>${money(r.amount)}</td>
+            </tr>
+          `).join('')
+          :
+          `<tr><td colspan="5"><div class="empty">尚無資料</div></td></tr>`
+        }
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+  `;
 }
 
-ACCT_KEYS.forEach(a=>{ document.getElementById('tab-'+a).innerHTML=buildAcctTab(a); });
-// init hidden date values
-ACCT_KEYS.forEach(a=>syncDate(a));
+async function addAccount(acct){
 
-// ── Tabs ──────────────────────────────────────────────────
-function switchTab(name){
-  document.querySelectorAll('.tab-pane').forEach(p=>p.style.display='none');
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('tab-'+name).style.display='';
-  document.querySelector('[data-tab="'+name+'"]').classList.add('active');
-  if(name==='report') renderReport();
-  else if(ACCT_KEYS.includes(name)) renderAcct(name);
-  else if(name==='fixed') renderFixed();
-}
+  const body = {
 
-// ── Render Account ────────────────────────────────────────
-function getMonths(acct){
-  const s=new Set();
-  db[acct].forEach(e=>{ const m=(e.date||'').slice(0,6); if(m) s.add(m); });
-  return Array.from(s).sort();
-}
-function updateFilter(acct){
-  const sel=document.getElementById(acct+'-filter');
-  if(!sel) return;
-  const cur=sel.value;
-  sel.innerHTML='<option value="">全部月份</option>';
-  getMonths(acct).forEach(m=>{
-    const o=document.createElement('option');
-    o.value=m; o.textContent=m; if(m===cur) o.selected=true;
-    sel.appendChild(o);
-  });
-}
-function renderAcct(acct){
-  updateFilter(acct);
-  const fm=document.getElementById(acct+'-filter').value;
-  const entries=db[acct];
-  let running=0;
-  const allRows=entries.map(e=>{
-    if(e.type==='prev') running=e.amount;
-    else if(e.type==='income') running+=e.amount;
-    else running-=e.amount;
-    return {...e,running};
-  });
-  const prevBal=entries.filter(e=>e.type==='prev').reduce((s,e)=>s+e.amount,0);
-  const totalIn=entries.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
-  const totalOut=entries.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
-  document.getElementById(acct+'-stats').innerHTML=`
-    <div class="sum-card"><div class="sum-label"><i class="ti ti-arrow-bar-to-up"></i>上期結存</div><div class="sum-value b">${fmtMoney(prevBal)}</div></div>
-    <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>本期收入</div><div class="sum-value g">${fmtMoney(totalIn)}</div></div>
-    <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>本期支出</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
-    <div class="sum-card hl"><div class="sum-label"><i class="ti ti-wallet"></i>本期結存</div><div class="sum-value">${fmtMoney(running)}</div></div>`;
-  const displayRows=fm?allRows.filter(r=>(r.date||'').startsWith(fm)):allRows;
-  const tbody=document.getElementById(acct+'-tbody');
-  if(displayRows.length===0){
-    tbody.innerHTML=`<tr><td colspan="7"><div class="empty-state"><i class="ti ti-inbox"></i><p>尚無資料，請新增明細</p></div></td></tr>`;
+    action:'addAccount',
+
+    date:document.getElementById('date').value,
+
+    account:acct,
+
+    subject:document.getElementById('subject').value,
+
+    note:document.getElementById('note').value,
+
+    type:document.getElementById('type').value,
+
+    amount:Number(document.getElementById('amount').value),
+
+    user:'admin'
+  };
+
+  if(!body.subject || !body.amount){
+
+    alert('請填寫完整');
+
     return;
   }
-  tbody.innerHTML=displayRows.map(r=>{
-    const isPrev=r.type==='prev', isIn=r.type==='income';
-    const inc=isPrev?`<span class="mu" style="font-size:12px">結存</span>`:isIn?`<span class="ni">${fmtMoney(r.amount)}</span>`:'<span class="mu">—</span>';
-    const exp=(!isPrev&&!isIn)?`<span class="no">${fmtMoney(r.amount)}</span>`:'<span class="mu">—</span>';
-    return `<tr class="${isPrev?'pr':'dr'}">
-      <td>${r.date}</td>
-      <td>${r.subj||''}</td>
-      <td class="mu">${r.note||'—'}</td>
-      <td>${inc}</td><td>${exp}</td>
-      <td><span class="${r.running>=0?'np':'nn'}">${fmtMoney(r.running)}</span></td>
-      <td><button class="btn danger" onclick="removeEntry('${acct}','${r.id}')"><i class="ti ti-trash"></i></button></td>
-    </tr>`;
-  }).join('');
-}
 
-// ── Fixed ─────────────────────────────────────────────────
-function renderFixed(){
-  const latest={B:0,C:0,D:0,E:0};
-  db.fixed.forEach(f=>{ latest[f.key]=f.amount; });
-  const total=Object.values(latest).reduce((s,v)=>s+v,0);
-  document.getElementById('fixed-stats').innerHTML=
-    Object.keys(latest).map(k=>`<div class="sum-card"><div class="sum-label">${FIXED_LABELS[k]}</div><div class="sum-value b">${fmtMoney(latest[k])}</div></div>`).join('')+
-    `<div class="sum-card hl"><div class="sum-label"><i class="ti ti-sigma"></i>小計</div><div class="sum-value">${fmtMoney(total)}</div></div>`;
-  const tbody=document.getElementById('fx-tbody');
-  if(db.fixed.length===0){tbody.innerHTML=`<tr><td colspan="5"><div class="empty-state"><i class="ti ti-inbox"></i><p>尚無資料</p></div></td></tr>`;return;}
-  tbody.innerHTML=db.fixed.map(f=>`
-    <tr class="dr">
-      <td>${f.month}</td><td>${FIXED_LABELS[f.key]||f.key}</td>
-      <td><span class="np">${fmtMoney(f.amount)}</span></td>
-      <td class="mu">${f.note||'—'}</td>
-      <td><button class="btn danger" onclick="removeFixed(${f.id})"><i class="ti ti-trash"></i></button></td>
-    </tr>`).join('');
-}
+  const res = await apiPost(body);
 
-// ── Report ────────────────────────────────────────────────
-function getAcctBal(acct){
-  let r=0;
-  db[acct].forEach(e=>{ if(e.type==='prev') r=e.amount; else if(e.type==='income') r+=e.amount; else r-=e.amount; });
-  return r;
-}
-function getFixedLatest(){
-  const l={B:0,C:0,D:0,E:0};
-  db.fixed.forEach(f=>{ l[f.key]=f.amount; });
-  return l;
-}
-function renderReport(){
-  const RA=['nonghu','taiqiye','lingyon'];
-  const bals={}; RA.forEach(a=>{ bals[a]=getAcctBal(a); });
-  const A=Object.values(bals).reduce((s,v)=>s+v,0);
-  const fixed=getFixedLatest(); const {B,C,D,E}=fixed; const grand=A+B+C+D+E;
-  function monthStats(acct){
-    const ms={};
-    db[acct].forEach(e=>{ const m=(e.date||'').slice(0,6); if(!m) return; if(!ms[m]) ms[m]={in:0,out:0}; if(e.type==='income') ms[m].in+=e.amount; else if(e.type==='expense') ms[m].out+=e.amount; });
-    return ms;
+  if(!res.success){
+
+    alert('新增失敗');
+
+    return;
   }
-  const stats={}; RA.forEach(a=>{ stats[a]=monthStats(a); });
-  const allMonths=[...new Set(RA.flatMap(a=>Object.keys(stats[a])))].filter(Boolean).sort();
-  const monthCards=allMonths.map(m=>{
-    const ns=stats.nonghu[m]||{in:0,out:0}; const ts=stats.taiqiye[m]||{in:0,out:0}; const ls=stats.lingyon[m]||{in:0,out:0};
-    const ti=ns.in+ts.in+ls.in, to=ns.out+ts.out+ls.out;
-    return `<div class="rcard"><div class="rcard-title"><span>${m} 月</span></div>
-      <div class="rrow"><span class="rl">農會 收入</span><span class="rv ni">${fmtMoney(ns.in)}</span></div>
-      <div class="rrow"><span class="rl">農會 支出</span><span class="rv no">${fmtMoney(ns.out)}</span></div>
-      <div class="rrow"><span class="rl">台企 收入</span><span class="rv ni">${fmtMoney(ts.in)}</span></div>
-      <div class="rrow"><span class="rl">台企 支出</span><span class="rv no">${fmtMoney(ts.out)}</span></div>
-      <div class="rrow"><span class="rl">零用金 借入</span><span class="rv ni">${fmtMoney(ls.in)}</span></div>
-      <div class="rrow"><span class="rl">零用金 採購</span><span class="rv no">${fmtMoney(ls.out)}</span></div>
-      <div class="divider"></div>
-      <div class="rrow"><span class="rl" style="font-weight:600">合計收入</span><span class="rv ni" style="font-size:14px">${fmtMoney(ti)}</span></div>
-      <div class="rrow"><span class="rl" style="font-weight:600">合計支出</span><span class="rv no" style="font-size:14px">${fmtMoney(to)}</span></div>
-    </div>`;
-  }).join('');
-  document.getElementById('report-content').innerHTML=`
-    <div class="summary-row" style="margin-bottom:1.5rem">
-      <div class="sum-card"><div class="sum-label">農會結存</div><div class="sum-value b">${fmtMoney(bals.nonghu)}</div></div>
-      <div class="sum-card"><div class="sum-label">台企結存</div><div class="sum-value b">${fmtMoney(bals.taiqiye)}</div></div>
-      <div class="sum-card"><div class="sum-label">零用金結存</div><div class="sum-value b">${fmtMoney(bals.lingyon)}</div></div>
-      <div class="sum-card"><div class="sum-label">活存合計 (A)</div><div class="sum-value b">${fmtMoney(A)}</div></div>
-      <div class="sum-card"><div class="sum-label">台企定期 (B)</div><div class="sum-value">${fmtMoney(B)}</div></div>
-      <div class="sum-card"><div class="sum-label">農會定期 (C)</div><div class="sum-value">${fmtMoney(C)}</div></div>
-      <div class="sum-card"><div class="sum-label">金龜現金 (D)</div><div class="sum-value">${fmtMoney(D)}</div></div>
-      <div class="sum-card"><div class="sum-label">信徒借款 (E)</div><div class="sum-value">${fmtMoney(E)}</div></div>
-      <div class="sum-card hl"><div class="sum-label"><i class="ti ti-sigma"></i>A+B+C+D+E 總資產</div><div class="sum-value" style="font-size:20px">${fmtMoney(grand)}</div></div>
+
+  await loadData();
+}
+
+function renderFixed(){
+
+  const rows = db.fixed;
+
+  document.getElementById('content').innerHTML = `
+
+  <div class="panel">
+
+    <div class="panel-h">
+      新增定存
     </div>
-    ${allMonths.length?`<h3 style="font-family:var(--serif);margin-bottom:1rem;color:var(--ink-mid);font-size:13px;">各月收支摘要</h3><div class="report-grid">${monthCards}</div>`:'<p class="mu" style="text-align:center;padding:2rem">尚無資料</p>'}`;
+
+    <div class="panel-b">
+
+      <div class="grid">
+
+        <div class="fg">
+          <label>月份</label>
+          <input id="fx-month" placeholder="114.05"/>
+        </div>
+
+        <div class="fg">
+
+          <label>科目</label>
+
+          <select id="fx-key">
+            <option value="B">台企定期</option>
+            <option value="C">農會定期</option>
+            <option value="D">金龜現金</option>
+            <option value="E">信徒借款</option>
+          </select>
+
+        </div>
+
+        <div class="fg">
+          <label>金額</label>
+          <input type="number" id="fx-amount"/>
+        </div>
+
+        <div class="fg">
+          <label>備註</label>
+          <input id="fx-note"/>
+        </div>
+
+        <div class="fg">
+          <label>&nbsp;</label>
+          <button class="btn" onclick="addFixed()">
+            新增
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="panel">
+
+    <div class="panel-h">
+      定存明細
+    </div>
+
+    <div class="table-wrap">
+
+      <table>
+
+        <thead>
+          <tr>
+            <th>月份</th>
+            <th>科目</th>
+            <th>金額</th>
+            <th>備註</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+        ${
+          rows.length
+          ?
+          rows.map(r=>`
+            <tr>
+              <td>${r.month}</td>
+              <td>${r.key}</td>
+              <td>${money(r.amount)}</td>
+              <td>${r.note||''}</td>
+            </tr>
+          `).join('')
+          :
+          `<tr><td colspan="4"><div class="empty">尚無資料</div></td></tr>`
+        }
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+  `;
 }
 
-// ── Query ─────────────────────────────────────────────────
-function runQuery(){
-  const acctFilter=document.getElementById('q-acct').value;
-  const typeFilter=document.getElementById('q-type').value;
-  const dateFrom=document.getElementById('q-date-from').value.trim();
-  const dateTo=document.getElementById('q-date-to').value.trim();
-  const keyword=document.getElementById('q-keyword').value.trim().toLowerCase();
-  let results=[];
-  ACCT_KEYS.forEach(acct=>{
-    db[acct].forEach(e=>{
-      const acctLabel=ACCT_META[acct].label;
-      if(acctFilter&&acctLabel!==acctFilter) return;
-      if(typeFilter&&TYPE_MAP[e.type]!==typeFilter) return;
-      if(dateFrom&&(e.date||'')<dateFrom) return;
-      if(dateTo&&(e.date||'')>dateTo) return;
-      if(keyword){ const h=((e.subj||'')+(e.note||'')).toLowerCase(); if(!h.includes(keyword)) return; }
-      results.push({...e,acctLabel});
-    });
-  });
-  results.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  const totalIn=results.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
-  const totalOut=results.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
-  document.getElementById('query-count').textContent=`共 ${results.length} 筆`;
-  const statsEl=document.getElementById('query-stats');
-  if(results.length>0){
-    statsEl.style.display='grid';
-    statsEl.innerHTML=`
-      <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>收入合計</div><div class="sum-value g">${fmtMoney(totalIn)}</div></div>
-      <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>支出合計</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
-      <div class="sum-card hl"><div class="sum-label"><i class="ti ti-calculator"></i>收支差額</div><div class="sum-value">${fmtMoney(totalIn-totalOut)}</div></div>`;
-  } else { statsEl.style.display='none'; }
-  const tbody=document.getElementById('query-tbody');
-  if(results.length===0){ tbody.innerHTML=`<tr><td colspan="6"><div class="empty-state"><i class="ti ti-search"></i><p>查無符合資料</p></div></td></tr>`; return; }
-  const typeTag=t=>t==='income'?'<span class="tag in">收入</span>':t==='expense'?'<span class="tag out">支出</span>':'<span class="tag prev">結存</span>';
-  tbody.innerHTML=results.map(r=>`
-    <tr class="dr">
-      <td>${r.date}</td><td class="mu">${r.acctLabel}</td>
-      <td>${r.subj||''}</td><td class="mu">${r.note||'—'}</td>
-      <td>${typeTag(r.type)}</td>
-      <td><span class="${r.type==='income'?'ni':r.type==='expense'?'no':'mu'}">${fmtMoney(r.amount)}</span></td>
-    </tr>`).join('');
+async function addFixed(){
+
+  const body = {
+
+    action:'addFixed',
+
+    month:document.getElementById('fx-month').value,
+
+    key:document.getElementById('fx-key').value,
+
+    amount:Number(document.getElementById('fx-amount').value),
+
+    note:document.getElementById('fx-note').value,
+
+    user:'admin'
+  };
+
+  if(!body.month || !body.amount){
+
+    alert('請填寫完整');
+
+    return;
+  }
+
+  const res = await apiPost(body);
+
+  if(!res.success){
+
+    alert('新增失敗');
+
+    return;
+  }
+
+  await loadData();
 }
 
-// ── Excel Export（含抬頭、合計、定存、簽名欄） ─────────────
-function exportExcel(){
-  const wb = XLSX.utils.book_new();
-  const ACCT_LABELS = {nonghu:'農會儲簿',taiqiye:'台企儲簿',lingyon:'零用金（採購）',jijin:'基金會'};
-  const RA = ['nonghu','taiqiye','lingyon'];
-  const A = RA.reduce((s,a)=>s+getAcctBal(a),0);
-  const fixed = getFixedLatest();
-  const grand = A + Object.values(fixed).reduce((s,v)=>s+v,0);
+function renderQuery(){
 
-  // 從資料推算期間
-  let allDates=[];
-  ACCT_KEYS.forEach(a=>{ db[a].forEach(e=>{ if(e.date) allDates.push(e.date); }); });
-  allDates.sort();
-  const periodStr = allDates.length
-    ? (allDates[0].slice(0,7) + (allDates[0].slice(0,7)!==allDates[allDates.length-1].slice(0,7) ? ' ～ '+allDates[allDates.length-1].slice(0,7) : ''))
-    : '';
+  const rows = [
+    ...db.nonghu,
+    ...db.taiqiye,
+    ...db.cash,
+    ...db.jijin
+  ];
 
-  ACCT_KEYS.forEach(acct=>{
-    const entries = db[acct];
-    if(entries.length===0) return;
-    const acctName = ACCT_LABELS[acct];
-    const rows=[];
-    const merges=[];
-    let r=0;  // current row index
+  document.getElementById('content').innerHTML = `
 
-    // ══ 抬頭區 ══════════════════════════════════════════
-    // R0: 主標題（合併 A:F）
-    rows.push(['北極殿　帳務明細報表','','','','','']);
-    merges.push({s:{r,c:0},e:{r,c:5}}); r++;
+  <div class="panel">
 
-    // R1: 副標題
-    rows.push([`帳戶：${acctName}`, '', `期間：${periodStr}`, '', '製表日：'+new Date().toLocaleDateString('zh-TW'), '']);
-    merges.push({s:{r,c:0},e:{r,c:1}});
-    merges.push({s:{r,c:2},e:{r,c:3}});
-    merges.push({s:{r,c:4},e:{r,c:5}}); r++;
+    <div class="panel-h">
+      查詢結果
+    </div>
 
-    // R2: 空行
-    rows.push(['','','','','','']); r++;
+    <div class="table-wrap">
 
-    // R3: 欄標題
-    rows.push(['日期','科目／商家','摘要','收入','支出','餘額']); r++;
+      <table>
 
-    // ══ 明細區 ══════════════════════════════════════════
-    const dataStartRow = r;
-    let running=0;
-    entries.forEach(e=>{
-      let inc='', exp='';
-      if(e.type==='prev'){ running=e.amount; inc=e.amount; }
-      else if(e.type==='income'){ running+=e.amount; inc=e.amount; }
-      else{ running-=e.amount; exp=e.amount; }
-      rows.push([e.date, e.subj||'', e.note||'',
-        inc===''?'':inc, exp===''?'':exp, running]);
-      r++;
-    });
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th>帳戶</th>
+            <th>科目</th>
+            <th>摘要</th>
+            <th>金額</th>
+          </tr>
+        </thead>
 
-    // ══ 合計列 ══════════════════════════════════════════
-    const totalIn  = entries.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
-    const totalOut = entries.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
-    rows.push(['','','合計',totalIn,totalOut,running]); r++;
-    rows.push(['','','','','','']); r++;  // 空行
+        <tbody>
 
-    // ══ 定存 / 特殊科目（僅三個主帳戶）══════════════════
-    if(RA.includes(acct)){
-      const noteMap={};
-      db.fixed.forEach(f=>{ if(!noteMap[f.key]) noteMap[f.key]=''; noteMap[f.key]+=(noteMap[f.key]?'、':'')+f.note; });
-      [['B','台企定期（B）'],['C','農會定期（C）'],['D','金龜現金（D）'],['E','信徒借款（E）']].forEach(([k,lbl])=>{
-        rows.push([lbl, noteMap[k]||'', '', fixed[k], '', '']);
-        merges.push({s:{r,c:0},e:{r,c:0}});
-        r++;
-      });
-      rows.push(['','','','','','']); r++;
-      rows.push([`A＋B＋C＋D＋E＝ ${grand.toLocaleString('zh-TW')}`, '','','','','']);
-      merges.push({s:{r,c:0},e:{r,c:5}}); r++;
-      rows.push(['','','','','','']); r++;
+        ${
+          rows.map(r=>`
+            <tr>
+              <td>${r.date}</td>
+              <td>${ACCOUNT_LABELS[r.account]}</td>
+              <td>${r.subject||''}</td>
+              <td>${r.note||''}</td>
+              <td>${money(r.amount)}</td>
+            </tr>
+          `).join('')
+        }
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+  `;
+}
+
+function renderReport(){
+
+  const accounts = ['nonghu','taiqiye','cash','jijin'];
+
+  const total = accounts.reduce((s,a)=>{
+
+    return s + calcBalance(db[a]);
+
+  },0);
+
+  document.getElementById('content').innerHTML = `
+
+  <div class="sum-row">
+
+    ${
+      accounts.map(a=>`
+
+      <div class="sum">
+        <div class="sum-title">${ACCOUNT_LABELS[a]}</div>
+        <div class="sum-val blue">
+          ${money(calcBalance(db[a]))}
+        </div>
+      </div>
+
+      `).join('')
     }
 
-    // ══ 簽名欄 ══════════════════════════════════════════
-    rows.push(['','','','','','']); r++;
-    // 簽名標題行
-    rows.push(['主　委', '', '監　委', '', '出　納', '會　計']);
-    merges.push({s:{r,c:0},e:{r,c:1}});
-    merges.push({s:{r,c:2},e:{r,c:3}});
-    r++;
-    // 簽名線行（用底線字元模擬）
-    rows.push(['_______________', '', '_______________', '', '_______________', '_______________']);
-    merges.push({s:{r,c:0},e:{r,c:1}});
-    merges.push({s:{r,c:2},e:{r,c:3}});
-    r++;
-    rows.push(['','','','','','']); r++;
-    // 蓋章說明
-    rows.push(['※本報表經主委、監委、出納、會計簽章後生效','','','','','']);
-    merges.push({s:{r,c:0},e:{r,c:5}}); r++;
+    <div class="sum">
+      <div class="sum-title">總資產</div>
+      <div class="sum-val">
+        ${money(total)}
+      </div>
+    </div>
 
-    // ══ 建立工作表 ══════════════════════════════════════
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!merges'] = merges;
-    ws['!cols'] = [{wch:14},{wch:20},{wch:24},{wch:13},{wch:13},{wch:14}];
-
-    // 列高：標題列較高
-    ws['!rows'] = [];
-    ws['!rows'][0] = {hpt:28};  // 主標題
-    ws['!rows'][1] = {hpt:18};  // 副標題
-    ws['!rows'][3] = {hpt:16};  // 欄標題
-
-    XLSX.utils.book_append_sheet(wb, ws, acctName);
-  });
-
-  if(wb.SheetNames.length===0){ alert('沒有資料可匯出'); return; }
-  XLSX.writeFile(wb,'北極殿帳務_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  </div>
+  `;
 }
 
-// ── Init ──────────────────────────────────────────────────
-loadFixed();
-// 先立刻顯示頁面（離線也能操作）
-switchTab('query');
-ACCT_KEYS.forEach(a=>{ updateFilter(a); renderAcct(a); });
-renderFixed();
-// 背景嘗試同步 Notion
-loadFromNotion().then(ok=>{
-  if(ok){
-    // 同步成功後更新所有分頁資料
-    ACCT_KEYS.forEach(a=>{ updateFilter(a); renderAcct(a); });
-  }
+function exportExcel(){
+
+  const wb = XLSX.utils.book_new();
+
+  Object.keys(ACCOUNT_LABELS).forEach(acct=>{
+
+    const rows = db[acct];
+
+    const data = rows.map(r=>({
+
+      日期:r.date,
+
+      科目:r.subject,
+
+      摘要:r.note,
+
+      類型:TYPE_LABELS[r.type],
+
+      金額:r.amount
+
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+
+    XLSX.utils.book_append_sheet(
+      wb,
+      ws,
+      ACCOUNT_LABELS[acct]
+    );
+
+  });
+
+  XLSX.writeFile(
+    wb,
+    '北極殿帳務.xlsx'
+  );
+}
+
+document.querySelectorAll('.tab').forEach(btn=>{
+
+  btn.onclick = ()=>{
+
+    document.querySelectorAll('.tab')
+    .forEach(t=>t.classList.remove('active'));
+
+    btn.classList.add('active');
+
+    currentTab = btn.dataset.tab;
+
+    render();
+  };
 });
+
+loadData();
+
 </script>
+
 </body>
 </html>
