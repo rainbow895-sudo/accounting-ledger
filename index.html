@@ -1,52 +1,84 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>北極殿帳務管理系統</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/tabler-icons.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>北極殿帳務管理系統</title>
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --gold:#B8972A;--gold-light:#F0D980;--gold-dim:#7A621C;
-  --ink:#1A1209;--ink-mid:#3D2E0F;--ink-soft:#7A6840;
-  --paper:#FBF6EC;--paper-mid:#F2E8D0;--paper-dark:#E4D5B0;
-  --bg:#EDE3CC;
-  --green:#1A6B3C;--green-light:#E8F5EE;
-  --blue:#1A3A6B;--blue-light:#E8EEF5;
-  --red:#C0392B;--red-light:#FDE8E8;
-  --shadow:0 2px 12px rgba(90,60,10,0.12);
-  --radius:6px;
-  --serif:'Noto Serif TC',serif;
-  --sans:'Noto Sans TC',sans-serif;
-}
- /* 權限登入全螢幕遮罩 */
-.login-overlay {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: var(--ink); display: flex; align-items: center; justify-content: center;
-  z-index: 9999; padding: 1rem;
-}
-.login-box {
-  background: var(--paper); border: 2px solid var(--gold); border-radius: var(--radius);
-  padding: 2.5rem 2rem; width: 100%; max-width: 360px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-  text-align: center;
-}
-.login-title {
-  font-family: var(--serif); font-size: 22px; font-weight: 700; color: var(--ink-mid);
-  margin-bottom: 5px; letter-spacing: 0.1em;
-}
-.login-subtitle {
-  font-size: 13px; color: var(--gold-dim); margin-bottom: 2rem;
-}
-.login-box .fg { margin-bottom: 0.8rem; text-align: left; }
-.login-box input { height: 38px; text-align: center; font-size: 15px; }
-.login-btn { width: 100%; height: 42px; font-size: 15px; margin-top: 0.5rem; justify-content: center; }
-.login-err { color: var(--red); font-size: 13px; margin-top: 0.8rem; min-height: 18px; font-weight: 500; }
-</style> </head>        
+  <style>
+    /* ─── 1. 權限登入全螢幕遮罩樣式 ─── */
+    .login-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #1A1209; display: flex; align-items: center; justify-content: center;
+      z-index: 9999; padding: 1rem; box-sizing: border-box;
+    }
+    .login-box {
+      background: #FBF6EC; border: 2px solid #B8972A; border-radius: 6px;
+      padding: 2.5rem 2rem; width: 100%; max-width: 360px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      text-align: center; box-sizing: border-box;
+    }
+    .login-title {
+      font-size: 22px; font-weight: 700; color: #3D2E0F;
+      margin-bottom: 5px; letter-spacing: 0.1em;
+    }
+    .login-subtitle {
+      font-size: 13px; color: #7A621C; margin-bottom: 2rem;
+    }
+    .login-box .fg { margin-bottom: 0.8rem; text-align: left; }
+    .login-box label { display: block; font-size: 13px; color: #3D2E0F; margin-bottom: 4px; font-weight: 600; }
+    .login-box input { 
+      width: 100%; height: 38px; text-align: center; font-size: 15px; 
+      border: 1px solid #7A621C; border-radius: 4px; background: #fff; box-sizing: border-box;
+    }
+    .login-btn { 
+      width: 100%; height: 42px; font-size: 15px; margin-top: 0.5rem; 
+      background: #B8972A; color: #fff; border: none; border-radius: 4px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600;
+    }
+    .login-btn:hover { background: #7A621C; }
+    .login-err { color: #C0392B; font-size: 13px; margin-top: 0.8rem; min-height: 18px; font-weight: 500; }
+
+    /* ─── 2. 您原本系統的完整主樣式 (已幫您將打碎的樣式整理回這裡) ─── */
+    *, *:before, *:after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { 
+      --gold: #B8972A; --gold-light: #F0D980; --gold-dim: #7A621C; 
+      --ink: #1A1209; --ink-mid: #3D2E0F; --ink-soft: #7A6440; 
+      --paper: #FBF6EC; --paper-mid: #F2E8D0; --paper-dark: #E4D5B0; 
+      --bg: #EDE3CC; --green: #1A6B3C; --green-light: #EBF5EE; 
+      --blue: #1A3A6B; --blue-light: #EBEFF5; --red: #C0392B; --red-light: #FDEBE8; 
+      --shadow: 0 2px 12px rgba(60,60,10,0.12); --radius: 6px; 
+      --serif: 'Noto Serif TC', serif; --sans: 'Noto Sans TC', sans-serif; 
+    }
+    body { font-family: var(--sans); background: var(--bg); color: var(--ink); min-height: 100vh; }
+  </style>
+</head>
+<body>
+
+  <div id="login-overlay" class="login-overlay">
+    <div class="login-box">
+      <div style="font-size: 40px; color: #B8972A; margin-bottom: 10px;"><i class="ti ti-lock-square-rounded"></i></div>
+      <div class="login-title">北極殿帳務管理系統</div>
+      <div class="login-subtitle">請輸入權限帳密以進行審閱</div>
+      
+      <div class="fg">
+        <label>使用帳號</label>
+        <input type="text" id="login-user" placeholder="例如: admin"/>
+      </div>
+      
+      <div class="fg" style="margin-bottom: 1.2rem;">
+        <label>管理密碼</label>
+        <input type="password" id="login-pwd" placeholder="•••••" onkeydown="if(event.key==='Enter') submitLogin()"/>
+      </div>
+      
+      <button class="login-btn" id="login-btn" onclick="submitLogin()">
+        <i class="ti ti-login"></i> 登入
+      </button>
+      <div id="login-err" class="login-err"></div>
+    </div>
+  </div>      
 body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:100vh;}
 .site-header{background:var(--ink);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:58px;border-bottom:2px solid var(--gold);}
 .site-logo{font-family:var(--serif);font-size:19px;font-weight:700;color:var(--gold-light);letter-spacing:.1em;display:flex;align-items:center;gap:10px;}
