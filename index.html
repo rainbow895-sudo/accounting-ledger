@@ -865,7 +865,30 @@ loadFromGS().then(ok=>{
     else if(cur==='fixed') renderFixed();
   }
 });
+  
   // ─── 新增：權限功能、介面遮蔽與快取記住登入狀態 ─────────────────────────
+
+async function gsReq(params) {
+  // 這裡會自動讀取您原本宣告在最頂端的 GS_URL 變數
+  if (!GS_URL) {
+    throw new Error('未設定 GS_URL 變數，請檢查網頁頂端設定');
+  }
+  
+  // 將物件參數動態轉換為網址後的網址字串 (Query String)
+  const url = GS_URL + '?' + new URLSearchParams(params).toString();
+  
+  // 發送非同步請求給 Google Apps Script 後端
+  const response = await fetch(url, {
+    method: 'GET'
+  });
+  
+  if (!response.ok) {
+    throw new Error('網路回應錯誤，無法連線至後端');
+  }
+  
+  // 解析後端傳回的 JSON 資料
+  return await response.json();
+}
 async function submitLogin() {
   const userInput = document.getElementById('login-user');
   const pwdInput = document.getElementById('login-pwd');
