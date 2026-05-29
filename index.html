@@ -432,13 +432,13 @@ function buildAcctTab(acct){
       <div class="panel-hdr">
         <span class="panel-title"><i class="ti ti-plus"></i>新增明細</span>
         <div class="mbar">
-          <button class="btn" style="height:30px;font-size:12px" onclick="loadFromNotion().then(()=>{ ACCT_KEYS.forEach(a=>{updateFilter(a);renderAcct(a);}); })"><i class="ti ti-refresh"></i>重新整理</button>
+          <button class="btn" style="height:30px;font-size:12px" onclick="loadFromGS()=>{ ACCT_KEYS.forEach(a=>{updateFilter(a);renderAcct(a);}); })"><i class="ti ti-refresh"></i>重新整理</button>
           <select id="${acct}-filter" onchange="renderAcct('${acct}')"><option value="">全部月份</option></select>
         </div>
       </div>
       <div class="panel-body">
         <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));">
-          <div class="fg" style="min-width:170px"><label>日期（日曆選取，顯示民國）</label>${buildRocDatePicker(acct)}</div>
+          <div class="fg" style="min-width:170px"><label>日期</label>${buildRocDatePicker(acct)}</div>
           <div class="fg" style="min-width:120px"><label>科目／商家</label><input type="text" id="${acct}-subj" placeholder="農會利息、全聯"/></div>
           <div class="fg" style="min-width:120px"><label>摘要</label><input type="text" id="${acct}-note" placeholder="詳細說明" onkeydown="if(event.key==='Enter') addEntry('${acct}')"/></div>
           <div class="fg"><label>類型</label>
@@ -574,48 +574,77 @@ function getFixedLatest(){
   db.fixed.forEach(f=>{ l[f.key]=f.amount; });
   return l;
 }
-function renderReport(){
-  const RA=['nonghu','taiqiye','lingyon'];
-  const bals={}; RA.forEach(a=>{ bals[a]=getAcctBal(a); });
-  const A=Object.values(bals).reduce((s,v)=>s+v,0);
-  const fixed=getFixedLatest(); const {B,C,D,E}=fixed; const grand=A+B+C+D+E;
-  function monthStats(acct){
-    const ms={};
-    db[acct].forEach(e=>{ const m=(e.date||'').slice(0,6); if(!m) return; if(!ms[m]) ms[m]={in:0,out:0}; if(e.type==='income') ms[m].in+=e.amount; else if(e.type==='expense') ms[m].out+=e.amount; });
-    return ms;
-  }
-  const stats={}; RA.forEach(a=>{ stats[a]=monthStats(a); });
-  const allMonths=[...new Set(RA.flatMap(a=>Object.keys(stats[a])))].filter(Boolean).sort();
-  const monthCards=allMonths.map(m=>{
-    const ns=stats.nonghu[m]||{in:0,out:0}; const ts=stats.taiqiye[m]||{in:0,out:0}; const ls=stats.lingyon[m]||{in:0,out:0};
-    const ti=ns.in+ts.in+ls.in, to=ns.out+ts.out+ls.out;
-    return `<div class="rcard"><div class="rcard-title"><span>${m} 月</span></div>
-      <div class="rrow"><span class="rl">農會 收入</span><span class="rv ni">${fmtMoney(ns.in)}</span></div>
-      <div class="rrow"><span class="rl">農會 支出</span><span class="rv no">${fmtMoney(ns.out)}</span></div>
-      <div class="rrow"><span class="rl">台企 收入</span><span class="rv ni">${fmtMoney(ts.in)}</span></div>
-      <div class="rrow"><span class="rl">台企 支出</span><span class="rv no">${fmtMoney(ts.out)}</span></div>
-      <div class="rrow"><span class="rl">零用金 借入</span><span class="rv ni">${fmtMoney(ls.in)}</span></div>
-      <div class="rrow"><span class="rl">零用金 採購</span><span class="rv no">${fmtMoney(ls.out)}</span></div>
-      <div class="divider"></div>
-      <div class="rrow"><span class="rl" style="font-weight:600">合計收入</span><span class="rv ni" style="font-size:14px">${fmtMoney(ti)}</span></div>
-      <div class="rrow"><span class="rl" style="font-weight:600">合計支出</span><span class="rv no" style="font-size:14px">${fmtMoney(to)}</span></div>
-    </div>`;
-  }).join('');
-  document.getElementById('report-content').innerHTML=`
-    <div class="summary-row" style="margin-bottom:1.5rem">
-      <div class="sum-card"><div class="sum-label">農會結存</div><div class="sum-value b">${fmtMoney(bals.nonghu)}</div></div>
-      <div class="sum-card"><div class="sum-label">台企結存</div><div class="sum-value b">${fmtMoney(bals.taiqiye)}</div></div>
-      <div class="sum-card"><div class="sum-label">零用金結存</div><div class="sum-value b">${fmtMoney(bals.lingyon)}</div></div>
-      <div class="sum-card"><div class="sum-label">活存合計 (A)</div><div class="sum-value b">${fmtMoney(A)}</div></div>
-      <div class="sum-card"><div class="sum-label">台企定期 (B)</div><div class="sum-value">${fmtMoney(B)}</div></div>
-      <div class="sum-card"><div class="sum-label">農會定期 (C)</div><div class="sum-value">${fmtMoney(C)}</div></div>
-      <div class="sum-card"><div class="sum-label">金龜現金 (D)</div><div class="sum-value">${fmtMoney(D)}</div></div>
-      <div class="sum-card"><div class="sum-label">信徒借款 (E)</div><div class="sum-value">${fmtMoney(E)}</div></div>
-      <div class="sum-card hl"><div class="sum-label"><i class="ti ti-sigma"></i>A+B+C+D+E 總資產</div><div class="sum-value" style="font-size:20px">${fmtMoney(grand)}</div></div>
-    </div>
-    ${allMonths.length?`<h3 style="font-family:var(--serif);margin-bottom:1rem;color:var(--ink-mid);font-size:13px;">各月收支摘要</h3><div class="report-grid">${monthCards}</div>`:'<p class="mu" style="text-align:center;padding:2rem">尚無資料</p>'}`;
-}
+// ── 補全 Report 渲染邏輯 ────────────────────────────────
+function renderReport() {
+    const RA = ['nonghu', 'taiqiye', 'lingyon'];
+    const bals = {}; RA.forEach(a => { bals[a] = getAcctBal(a); });
+    const A = Object.values(bals).reduce((s, v) => s + v, 0);
+    const fixed = getFixedLatest(); 
+    const { B, C, D, E } = fixed; 
+    const grand = A + B + C + D + E;
 
+    function monthStats(acct) {
+        const ms = {};
+        db[acct].forEach(e => { 
+            const m = (e.date || '').split('.').slice(0, 2).join('.'); // 取得 112.05 格式
+            if (!m || e.type === 'prev') return; 
+            if (!ms[m]) ms[m] = { in: 0, out: 0 }; 
+            if (e.type === 'income') ms[m].in += e.amount; 
+            else if (e.type === 'expense') ms[m].out += e.amount; 
+        });
+        return ms;
+    }
+
+    const stats = {}; RA.forEach(a => { stats[a] = monthStats(a); });
+    const allMonths = [...new Set(RA.flatMap(a => Object.keys(stats[a])))].filter(Boolean).sort().reverse();
+
+    const summaryHtml = `
+        <div class="summary-row">
+            <div class="sum-card"><div class="sum-label">流動資金 (A)</div><div class="sum-value b">${fmtMoney(A)}</div></div>
+            <div class="sum-card"><div class="sum-label">定存/特殊 (B-E)</div><div class="sum-value b">${fmtMoney(B + C + D + E)}</div></div>
+            <div class="sum-card hl"><div class="sum-label">資產總計</div><div class="sum-value">${fmtMoney(grand)}</div></div>
+        </div>
+        <div class="report-grid">
+            ${allMonths.map(m => {
+                const ns = stats.nonghu[m] || { in: 0, out: 0 };
+                const ts = stats.taiqiye[m] || { in: 0, out: 0 };
+                const ls = stats.lingyon[m] || { in: 0, out: 0 };
+                const ti = ns.in + ts.in + ls.in;
+                const to = ns.out + ts.out + ls.out;
+                return `
+                    <div class="rcard">
+                        <div class="rcard-title"><span>民國 ${m} 月份</span></div>
+                        <div class="rrow"><span class="rl">農會收支</span><span class="rv">${fmtMoney(ns.in)} / ${fmtMoney(ns.out)}</span></div>
+                        <div class="rrow"><span class="rl">台企收支</span><span class="rv">${fmtMoney(ts.in)} / ${fmtMoney(ts.out)}</span></div>
+                        <div class="rrow"><span class="rl">零用金(借/支)</span><span class="rv">${fmtMoney(ls.in)} / ${fmtMoney(ls.out)}</span></div>
+                        <div class="divider"></div>
+                        <div class="rrow"><strong>月收入小計</strong><span class="rv ni">${fmtMoney(ti)}</span></div>
+                        <div class="rrow"><strong>月支出小計</strong><span class="rv no">${fmtMoney(to)}</span></div>
+                    </div>`;
+            }).join('')}
+        </div>`;
+    document.getElementById('report-content').innerHTML = summaryHtml;
+}
+  // ── Excel 匯出 ──────────────────────────────────────────
+function exportExcel() {
+    const data = [];
+    ACCT_KEYS.forEach(k => {
+        db[k].forEach(e => {
+            data.push({
+                '日期': e.date,
+                '帳戶': ACCT_META[k].label,
+                '科目/商家': e.subj,
+                '摘要': e.note,
+                '類型': TYPE_MAP[e.type],
+                '金額': e.amount
+            });
+        });
+    });
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "北極殿全體帳務");
+    XLSX.writeFile(wb, `北極殿帳務備份_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
 // ── Query ─────────────────────────────────────────────────
 function runQuery(){
   const acctFilter=document.getElementById('q-acct').value;
@@ -785,6 +814,12 @@ loadFromGS().then(ok=>{
     else if(cur==='fixed') renderFixed();
   }
 });
+  // 4. 確保網頁載入時有初始化資料（如果原本結尾沒有，請補上這幾行）
+window.onload = async function() {
+  loadFixed();       // 載入本地定存資料
+  await loadFromGS(); // 從 Google Sheets 載入資料
+  switchTab('query'); // 預設停在查詢分頁
+};
 </script>
 </body>
 </html>
