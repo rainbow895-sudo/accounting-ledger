@@ -121,7 +121,7 @@ tr.pr td{background:var(--blue-light);}
 <header class="site-header">
   <div class="site-logo"><i class="ti ti-building-temple"></i>北極殿帳務管理系統</div>
   <div style="display:flex;align-items:center;gap:8px;">
-    <span class="sync-status offline" id="sync-status"><i class="ti ti-cloud"></i>待連線</span>
+    <span class="sync-status loading" id="sync-status"><i class="ti ti-cloud spin"></i>連線中…</span>
     <button class="btn ghost" onclick="exportExcel()"><i class="ti ti-file-spreadsheet"></i>匯出 Excel</button>
   </div>
 </header>
@@ -250,24 +250,19 @@ tr.pr td{background:var(--blue-light);}
 
 <script>
 // ── Google Sheets Config ─────────────────────────────────
-const GS_URL = 'https://script.google.com/macros/s/AKfycbye6j5y_GNN1_YxrlJQGD4MndkavLjkd7YtMVkXERcJCkR4-q9hTMnNar_ZNs3rhqAE/exec';
+const GS_URL = 'https://script.google.com/macros/s/AKfycbzhMWdOk2r53DJCVa7XPAt_uZnJHJRrnYI-rPEFEVf8glkXbqpKbCQUy4Jux1jn2f7k/exec';
 
 async function gsReq(params){
-  const url = GS_URL + '?' + new URLSearchParams({action:'getAll'}).toString();
-  // GET for getAll, POST for add/delete
-  if(params.action === 'getAll'){
-    const res = await fetch(GS_URL + '?action=getAll');
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    return res.json();
-  } else {
-    const res = await fetch(GS_URL, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(params)
-    });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    return res.json();
-  }
+  // Apps Script Web App 用 GET + query string，避免 POST redirect 問題
+  const qs = new URLSearchParams(params).toString();
+  const res = await fetch(GS_URL + '?' + qs, {
+    method: 'GET',
+    redirect: 'follow'
+  });
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  const text = await res.text();
+  try { return JSON.parse(text); }
+  catch(e) { throw new Error('回應格式錯誤: ' + text.slice(0,100)); }
 }
 
 // ── Constants ─────────────────────────────────────────────
@@ -334,7 +329,7 @@ function setStatus(state, msg){
 
 // ── Load from Google Sheets ──────────────────────────────
 async function loadFromGS(){
-  setStatus('loading','同步中…');
+  setStatus('loading','連線 Google Sheets…');
   try {
     const res = await gsReq({action:'getAll'});
     if(res.error) throw new Error(res.error);
@@ -386,7 +381,7 @@ async function addEntry(acct){
   btn.disabled=true; btn.innerHTML='<i class="ti ti-loader spin"></i>儲存中…';
   try {
     const entry={date,subj,note,type,amount};
-    const res=await gsReq({action:'add', date, subj, note, type:TYPE_MAP[type]||type, amount, acct:ACCT_META[acct].label});
+    const res=await gsReq({action:'add', date, subj, note:note||'', type:TYPE_MAP[type]||type, amount:String(amount), acct:ACCT_META[acct].label});
     if(res.error) throw new Error(res.error);
     entry.id=String(res.id);
     db[acct].push(entry);
