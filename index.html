@@ -8,7 +8,30 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/tabler-icons.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>
+/* 權限登入全螢幕遮罩 */
+.login-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: var(--ink); display: flex; align-items: center; justify-content: center;
+  z-index: 9999; padding: 1rem;
+}
+.login-box {
+  background: var(--paper); border: 2px solid var(--gold); border-radius: var(--radius);
+  padding: 2.5rem 2rem; width: 100%; max-width: 360px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  text-align: center;
+}
+.login-title {
+  font-family: var(--serif); font-size: 22px; font-weight: 700; color: var(--ink-mid);
+  margin-bottom: 5px; letter-spacing: 0.1em;
+}
+.login-subtitle {
+  font-size: 13px; color: var(--gold-dim); margin-bottom: 2rem;
+}
+.login-box .fg { margin-bottom: 0.8rem; text-align: left; }
+.login-box input { height: 38px; text-align: center; font-size: 15px; }
+.login-btn { width: 100%; height: 42px; font-size: 15px; margin-top: 0.5rem; justify-content: center; }
+.login-err { color: var(--red); font-size: 13px; margin-top: 0.8rem; min-height: 18px; font-weight: 500; }
+  <style>
+ 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --gold:#B8972A;--gold-light:#F0D980;--gold-dim:#7A621C;
@@ -117,7 +140,28 @@ tr.pr td{background:var(--blue-light);}
 </style>
 </head>
 <body>
-
+<div id="login-overlay" class="login-overlay">
+  <div class="login-box">
+    <div style="font-size: 40px; color: var(--gold); margin-bottom: 10px;"><i class="ti ti-lock-square-rounded"></i></div>
+    <div class="login-title">北極殿帳務管理系統</div>
+    <div class="login-subtitle">請輸入權限帳密以進行審閱</div>
+    
+    <div class="fg">
+      <label>使用帳號</label>
+      <input type="text" id="login-user" placeholder="例如: admin"/>
+    </div>
+    
+    <div class="fg" style="margin-bottom: 1.2rem;">
+      <label>管理密碼</label>
+      <input type="password" id="login-pwd" placeholder="•••••" onkeydown="if(event.key==='Enter') submitLogin()"/>
+    </div>
+    
+    <button class="btn primary login-btn" id="login-btn" onclick="submitLogin()">
+      <i class="ti ti-login"></i> 安全登入
+    </button>
+    <div id="login-err" class="login-err"></div>
+  </div>
+</div>
 <header class="site-header">
   <div class="site-logo"><i class="ti ti-building-temple"></i>北極殿帳務管理系統</div>
   <div style="display:flex;align-items:center;gap:8px;">
@@ -250,7 +294,7 @@ tr.pr td{background:var(--blue-light);}
 
 <script>
 // ── Google Sheets Config ─────────────────────────────────
-const GS_URL = 'https://script.google.com/macros/s/AKfycbzhMWdOk2r53DJCVa7XPAt_uZnJHJRrnYI-rPEFEVf8glkXbqpKbCQUy4Jux1jn2f7k/exec';
+const GS_URL = 'https://script.google.com/macros/s/AKfycbzASaXm0e6ibt2CrRHf2np71KyM2BDizMvmj5wAr9iyPGTbOSTAs0a2fYbC5fTt-5CD/exec';
 
 async function gsReq(params){
   // Apps Script Web App 用 GET + query string，避免 POST redirect 問題
@@ -575,75 +619,81 @@ function getFixedLatest(){
   return l;
 }
 // ── 補全 Report 渲染邏輯 ────────────────────────────────
+// ─── 補全並優化月報總表 (覆蓋原本被截斷的地方) ─────────────────────────
 function renderReport() {
-    const RA = ['nonghu', 'taiqiye', 'lingyon'];
-    const bals = {}; RA.forEach(a => { bals[a] = getAcctBal(a); });
-    const A = Object.values(bals).reduce((s, v) => s + v, 0);
-    const fixed = getFixedLatest(); 
-    const { B, C, D, E } = fixed; 
-    const grand = A + B + C + D + E;
+  const RA = ['nonghu', 'taiqiye', 'lingyon'];
+  const bals = {}; RA.forEach(a => { bals[a] = getAcctBal(a); });
+  const A = Object.values(bals).reduce((s, v) => s + v, 0);
+  const fixed = getFixedLatest(); 
+  const { B, C, D, E } = fixed; 
+  const grand = A + B + C + D + E;
 
-    function monthStats(acct) {
-        const ms = {};
-        db[acct].forEach(e => { 
-            const m = (e.date || '').split('.').slice(0, 2).join('.'); // 取得 112.05 格式
-            if (!m || e.type === 'prev') return; 
-            if (!ms[m]) ms[m] = { in: 0, out: 0 }; 
-            if (e.type === 'income') ms[m].in += e.amount; 
-            else if (e.type === 'expense') ms[m].out += e.amount; 
-        });
-        return ms;
-    }
+  let html = `
+    <div class="summary-row">
+      <div class="sum-card hl"><div class="sum-label">總資產 (A+B+C+D+E)</div><div class="sum-value" style="font-size:22px">${fmtMoney(grand)}</div></div>
+      <div class="sum-card"><div class="sum-label">流動現金 (A)</div><div class="sum-value b">${fmtMoney(A)}</div></div>
+    </div>
+    <div class="report-grid">
+      <div class="rcard">
+        <div class="rcard-title">資產分佈明細</div>
+        <div class="rrow"><span class="rl">農會儲簿</span><span class="rv">${fmtMoney(bals.nonghu)}</span></div>
+        <div class="rrow"><span class="rl">台企儲簿</span><span class="rv">${fmtMoney(bals.taiqiye)}</span></div>
+        <div class="rrow"><span class="rl">零用金</span><span class="rv">${fmtMoney(bals.lingyon)}</span></div>
+        <div class="divider"></div>
+        <div class="rrow"><span class="rl">台企定期(B)</span><span class="rv">${fmtMoney(B)}</span></div>
+        <div class="rrow"><span class="rl">農會定期(C)</span><span class="rv">${fmtMoney(C)}</span></div>
+        <div class="rrow"><span class="rl">金龜現金(D)</span><span class="rv">${fmtMoney(D)}</span></div>
+        <div class="rrow"><span class="rl">信徒借款(E)</span><span class="rv">${fmtMoney(E)}</span></div>
+      </div>`;
 
-    const stats = {}; RA.forEach(a => { stats[a] = monthStats(a); });
-    const allMonths = [...new Set(RA.flatMap(a => Object.keys(stats[a])))].filter(Boolean).sort().reverse();
+  const stats = {}; RA.forEach(a => { stats[a] = monthStats(a); });
+  const allMonths = [...new Set(RA.flatMap(a => Object.keys(stats[a])))].filter(Boolean).sort().reverse();
 
-    const summaryHtml = `
-        <div class="summary-row">
-            <div class="sum-card"><div class="sum-label">流動資金 (A)</div><div class="sum-value b">${fmtMoney(A)}</div></div>
-            <div class="sum-card"><div class="sum-label">定存/特殊 (B-E)</div><div class="sum-value b">${fmtMoney(B + C + D + E)}</div></div>
-            <div class="sum-card hl"><div class="sum-label">資產總計</div><div class="sum-value">${fmtMoney(grand)}</div></div>
-        </div>
-        <div class="report-grid">
-            ${allMonths.map(m => {
-                const ns = stats.nonghu[m] || { in: 0, out: 0 };
-                const ts = stats.taiqiye[m] || { in: 0, out: 0 };
-                const ls = stats.lingyon[m] || { in: 0, out: 0 };
-                const ti = ns.in + ts.in + ls.in;
-                const to = ns.out + ts.out + ls.out;
-                return `
-                    <div class="rcard">
-                        <div class="rcard-title"><span>民國 ${m} 月份</span></div>
-                        <div class="rrow"><span class="rl">農會收支</span><span class="rv">${fmtMoney(ns.in)} / ${fmtMoney(ns.out)}</span></div>
-                        <div class="rrow"><span class="rl">台企收支</span><span class="rv">${fmtMoney(ts.in)} / ${fmtMoney(ts.out)}</span></div>
-                        <div class="rrow"><span class="rl">零用金(借/支)</span><span class="rv">${fmtMoney(ls.in)} / ${fmtMoney(ls.out)}</span></div>
-                        <div class="divider"></div>
-                        <div class="rrow"><strong>月收入小計</strong><span class="rv ni">${fmtMoney(ti)}</span></div>
-                        <div class="rrow"><strong>月支出小計</strong><span class="rv no">${fmtMoney(to)}</span></div>
-                    </div>`;
-            }).join('')}
-        </div>`;
-    document.getElementById('report-content').innerHTML = summaryHtml;
+  html += allMonths.map(m => {
+    const ns = stats.nonghu[m] || { in: 0, out: 0 };
+    const ts = stats.taiqiye[m] || { in: 0, out: 0 };
+    const ls = stats.lingyon[m] || { in: 0, out: 0 };
+    return `
+      <div class="rcard">
+        <div class="rcard-title">${m} 月收支統計</div>
+        <div class="rrow"><span class="rl">總收入</span><span class="rv ni">${fmtMoney(ns.in + ts.in + ls.in)}</span></div>
+        <div class="rrow"><span class="rl">總支出</span><span class="rv no">${fmtMoney(ns.out + ts.out + ls.out)}</span></div>
+        <div class="divider"></div>
+        <div style="font-size:11px; color:var(--ink-soft)">分項：農會(+${Math.round(ns.in)}/-${Math.round(ns.out)}) | 台企(+${Math.round(ts.in)}/-${Math.round(ts.out)})</div>
+      </div>`;
+  }).join('') + `</div>`;
+
+  document.getElementById('report-content').innerHTML = html;
 }
-  // ── Excel 匯出 ──────────────────────────────────────────
+
+function monthStats(acct) {
+  const ms = {};
+  db[acct].forEach(e => {
+    const m = (e.date || '').slice(0, 6);
+    if (!m) return;
+    if (!ms[m]) ms[m] = { in: 0, out: 0 };
+    if (e.type === 'income') ms[m].in += e.amount;
+    else if (e.type === 'expense') ms[m].out += e.amount;
+  });
+  return ms;
+}
+
+// ─── 新增：實作 Excel 匯出功能 ─────────────────────────────────────
 function exportExcel() {
-    const data = [];
-    ACCT_KEYS.forEach(k => {
-        db[k].forEach(e => {
-            data.push({
-                '日期': e.date,
-                '帳戶': ACCT_META[k].label,
-                '科目/商家': e.subj,
-                '摘要': e.note,
-                '類型': TYPE_MAP[e.type],
-                '金額': e.amount
-            });
-        });
-    });
+  if (!XLSX) { alert('Excel 匯出元件尚未載入完成'); return; }
+  const wb = XLSX.utils.book_new();
+  ACCT_KEYS.forEach(key => {
+    const data = db[key].map(e => ({
+      '日期': e.date,
+      '科目/商家': e.subj,
+      '摘要': e.note,
+      '類型': TYPE_MAP[e.type] || e.type,
+      '金額': e.amount
+    }));
     const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "北極殿全體帳務");
-    XLSX.writeFile(wb, `北極殿帳務備份_${new Date().toISOString().slice(0,10)}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, ACCT_META[key].label);
+  });
+  XLSX.writeFile(wb, `北極殿帳務明細表_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 // ── Query ─────────────────────────────────────────────────
 function runQuery(){
@@ -814,11 +864,121 @@ loadFromGS().then(ok=>{
     else if(cur==='fixed') renderFixed();
   }
 });
-  // 4. 確保網頁載入時有初始化資料（如果原本結尾沒有，請補上這幾行）
+  // ─── 新增：權限功能、介面遮蔽與快取記住登入狀態 ─────────────────────────
+async function submitLogin() {
+  const userInput = document.getElementById('login-user');
+  const pwdInput = document.getElementById('login-pwd');
+  const btn = document.getElementById('login-btn');
+  const errEl = document.getElementById('login-err');
+  
+  const user = userInput.value.trim();
+  const pwd = pwdInput.value.trim();
+  
+  if (!user || !pwd) { errEl.textContent = '請填寫帳號與密碼'; return; }
+  
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader spin"></i> 驗證權限中…';
+  errEl.textContent = '';
+  
+  try {
+    const res = await gsReq({ action: 'login', user: user, password: pwd });
+    if (res.success) {
+      sessionStorage.setItem('beiji_logged_in', 'true');
+      sessionStorage.setItem('beiji_user_role', res.role);
+      
+      document.getElementById('login-overlay').style.display = 'none';
+      await initializeSystem();
+    } else {
+      errEl.textContent = res.error || '帳號或密碼錯誤';
+      pwdInput.value = '';
+      pwdInput.focus();
+    }
+  } catch (err) {
+    errEl.textContent = '連線失敗，請檢查網路或後端部署網址';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-login"></i> 安全登入';
+  }
+}
+
+function applyRolePermissions() {
+  const role = sessionStorage.getItem('beiji_user_role') || '一般';
+  const allTabs = document.querySelectorAll('.tabs-bar .tab-btn');
+  
+  // 先把所有人重設回預設樣式
+  allTabs.forEach(btn => btn.style.display = '');
+  let styleEl = document.getElementById('role-style-override');
+  if (styleEl) styleEl.innerHTML = '';
+
+  if (role === '一般') {
+    // 【一般】權限：只准看查詢與月報
+    allTabs.forEach(btn => {
+      const onclickAttr = btn.getAttribute('onclick') || '';
+      if (!onclickAttr.includes('query') && !onclickAttr.includes('report')) {
+        btn.style.display = 'none';
+      }
+    });
+    // 透過 CSS 強制隱藏所有記帳面板與刪除按鈕
+    injectTemplateStyles(`.btn.danger, #fx-add-btn, .panel-hdr .btn.primary, .form-grid { display: none !important; }`);
+  } else if (role === '會計') {
+    // 【會計】權限：看得到全部，能記帳，但不准刪除
+    injectTemplateStyles(`.btn.danger { display: none !important; } .form-grid { display: grid !important; }`);
+  }
+  // 管理員權限不需要加任何隱藏 CSS
+}
+
+function injectTemplateStyles(cssString) {
+  let styleEl = document.getElementById('role-style-override');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'role-style-override';
+    document.head.appendChild(styleEl);
+  }
+  styleEl.innerHTML = cssString;
+}
+
+async function initializeSystem() {
+  applyRolePermissions();
+  loadFixed();
+  const success = await loadFromGS();
+  if (success) {
+    switchTab('query');
+    if (typeof runQuery === 'function') runQuery();
+  } else {
+    alert('同步雲端資料失敗，請檢查網路並重新整理。');
+  }
+}
+
+// ─── 修改：具有權限檢查功能的 Tab 切換 ─────────────────────────
+function switchTab(name) {
+  const role = sessionStorage.getItem('beiji_user_role') || '一般';
+  if (role === '一般' && name !== 'query' && name !== 'report') {
+    alert('您的權限層級無法存取記帳功能。');
+    return;
+  }
+  document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  
+  const targetPane = document.getElementById('tab-' + name);
+  const targetBtn = document.querySelector(`[data-tab="${name}"]`);
+  if (targetPane) targetPane.style.display = '';
+  if (targetBtn) targetBtn.classList.add('active');
+  
+  if (name === 'report') renderReport();
+  else if (ACCT_KEYS.includes(name)) renderAcct(name);
+  else if (name === 'fixed') renderFixed();
+}
+
+// ─── 修正：網頁初始化守衛 (解決網頁重新整理資料遺失的問題) ──────────────
 window.onload = async function() {
-  loadFixed();       // 載入本地定存資料
-  await loadFromGS(); // 從 Google Sheets 載入資料
-  switchTab('query'); // 預設停在查詢分頁
+  const isAuthed = sessionStorage.getItem('beiji_logged_in');
+  if (isAuthed === 'true') {
+    document.getElementById('login-overlay').style.display = 'none';
+    await initializeSystem();
+  } else {
+    document.getElementById('login-overlay').style.display = 'flex';
+    document.getElementById('login-user').focus();
+  }
 };
 </script>
 </body>
