@@ -9,6 +9,21 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/tabler-icons.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gold:#B8972A;--gold-light:#F0D980;--gold-dim:#7A621C;
+  --ink:#1A1209;--ink-mid:#3D2E0F;--ink-soft:#7A6840;
+  --paper:#FBF6EC;--paper-mid:#F2E8D0;--paper-dark:#E4D5B0;
+  --bg:#EDE3CC;
+  --green:#1A6B3C;--green-light:#E8F5EE;
+  --blue:#1A3A6B;--blue-light:#E8EEF5;
+  --red:#C0392B;--red-light:#FDE8E8;
+  --shadow:0 2px 12px rgba(90,60,10,0.12);
+  --radius:6px;
+  --serif:'Noto Serif TC',serif;
+  --sans:'Noto Sans TC',sans-serif;
+}
  /* 權限登入全螢幕遮罩 */
 .login-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -31,21 +46,7 @@
 .login-box input { height: 38px; text-align: center; font-size: 15px; }
 .login-btn { width: 100%; height: 42px; font-size: 15px; margin-top: 0.5rem; justify-content: center; }
 .login-err { color: var(--red); font-size: 13px; margin-top: 0.8rem; min-height: 18px; font-weight: 500; }
-</style> </head>    
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --gold:#B8972A;--gold-light:#F0D980;--gold-dim:#7A621C;
-  --ink:#1A1209;--ink-mid:#3D2E0F;--ink-soft:#7A6840;
-  --paper:#FBF6EC;--paper-mid:#F2E8D0;--paper-dark:#E4D5B0;
-  --bg:#EDE3CC;
-  --green:#1A6B3C;--green-light:#E8F5EE;
-  --blue:#1A3A6B;--blue-light:#E8EEF5;
-  --red:#C0392B;--red-light:#FDE8E8;
-  --shadow:0 2px 12px rgba(90,60,10,0.12);
-  --radius:6px;
-  --serif:'Noto Serif TC',serif;
-  --sans:'Noto Sans TC',sans-serif;
-}
+</style> </head>        
 body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:100vh;}
 .site-header{background:var(--ink);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:58px;border-bottom:2px solid var(--gold);}
 .site-logo{font-family:var(--serif);font-size:19px;font-weight:700;color:var(--gold-light);letter-spacing:.1em;display:flex;align-items:center;gap:10px;}
