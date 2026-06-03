@@ -776,68 +776,87 @@ function exportExcel() {
 // ── Query ─────────────────────────────────────────────────
 // ─── 修正後的查詢函式：預設自動鎖定當月資料 ───
 function runQuery(){
-  // ─── 【智慧核心修正】剛登入重開、欄位沒日期時，自動幫使用者鎖定當月 ───
+  // ─── 智慧鎖定當月，改用標準橫線格式 ───
   let dateFromEl = document.getElementById('q-date-from');
   let dateToEl = document.getElementById('q-date-to');
   
   if (dateFromEl && dateToEl && !dateFromEl.value && !dateToEl.value) {
     const now = new Date();
     const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0'); // 月份補零
-    const today = String(now.getDate()).padStart(2, '0');      // 日期補零
+    const month = String(now.getMonth() + 1).padStart(2, '0'); 
+    const today = String(now.getDate()).padStart(2, '0');      
     
-    // 設定當月 1 號到今天
+    // 💡 修正：確保底層賦值與讀取都是標準的 YYYY-MM-DD
     dateFromEl.value = `${year}-${month}-01`;
     dateToEl.value = `${year}-${month}-${today}`;
   }
-  // ───────────────────────────────────────────────────────────
 
-  const acctFilter=document.getElementById('q-acct').value;
-  const typeFilter=document.getElementById('q-type').value;
-  const dateFrom=dateFromEl.value.trim(); // 使用剛剛可能被預設好的日期
-  const dateTo=dateToEl.value.trim();
-  const keyword=document.getElementById('q-keyword').value.trim().toLowerCase();
+  const acctFilter = document.getElementById('q-acct').value;
+  const typeFilter = document.getElementById('q-type').value;
   
-  let results=[];
-  ACCT_KEYS.forEach(acct=>{
-    if(!db[acct]) return; // 安全檢查，防呆
-    db[acct].forEach(e=>{
-      const acctLabel=ACCT_META[acct].label;
-      if(acctFilter&&acctLabel!==acctFilter) return;
-      if(typeFilter&&TYPE_MAP[e.type]!==typeFilter) return;
-      if(dateFrom&&(e.date||'')<dateFrom) return;
-      if(dateTo&&(e.date||'')>dateTo) return;
-      if(keyword){ const h=((e.subj||'')+(e.note||'')).toLowerCase(); if(!h.includes(keyword)) return; }
-      results.push({...e,acctLabel});
+  // 💡 安全防護：將所有日期中的斜線 "/" 統一置換成橫線 "-"，確保比對時不會出錯
+  const dateFrom = dateFromEl.value.trim().replace(/\//g, '-');
+  const dateTo   = dateToEl.value.trim().replace(/\//g, '-');
+  const keyword  = document.getElementById('q-keyword').value.trim().toLowerCase();
+  
+  let results = [];
+  if (typeof ACCT_KEYS !== 'undefined' && typeof db !== 'undefined') {
+    ACCT_KEYS.forEach(acct => {
+      if (!db[acct]) return; 
+      db[acct].forEach(e => {
+        const acctLabel = ACCT_META[acct].label;
+        if (acctFilter && acctLabel !== acctFilter) return;
+        if (typeFilter && TYPE_MAP[e.type] !== typeFilter) return;
+        
+        // 💡 關鍵：把資料庫裡的日期也統一換成橫線做比對
+        const entryDate = (e.date || '').trim().replace(/\//g, '-');
+        if (dateFrom && entryDate < dateFrom) return;
+        if (dateTo && entryDate > dateTo) return;
+        
+        if (keyword) { 
+          const h = ((e.subj || '') + (e.note || '')).toLowerCase(); 
+          if (!h.includes(keyword)) return; 
+        }
+        results.push({ ...e, acctLabel });
+      });
     });
-  });
+  }
   
-  results.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  // 日期從舊到新排序
+  results.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   
-  const totalIn=results.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
-  const totalOut=results.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const totalIn  = results.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
+  const totalOut = results.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
   
-  document.getElementById('query-count').textContent=`共 ${results.length} 筆`;
-  const statsEl=document.getElementById('query-stats');
-  if(results.length>0){
-    statsEl.style.display='grid';
-    statsEl.innerHTML=`
-      <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>收入合計</div><div class="sum-value g">${fmtMoney(totalIn)}</div></div>
-      <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>支出合計</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
-      <div class="sum-card hl"><div class="sum-label"><i class="ti ti-calculator"></i>收支差額</div><div class="sum-value">${fmtMoney(totalIn-totalOut)}</div></div>`;
-  } else { statsEl.style.display='none'; }
+  document.getElementById('query-count').textContent = `共 ${results.length} 筆`;
+  const statsEl = document.getElementById('query-stats');
+  if (statsEl) {
+    if (results.length > 0) {
+      statsEl.style.display = 'grid';
+      statsEl.innerHTML = `
+        <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>收入合計</div><div class="sum-value g">${fmtMoney(totalIn)}</div></div>
+        <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>支出合計</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
+        <div class="sum-card hl"><div class="sum-label"><i class="ti ti-calculator"></i>收支差額</div><div class="sum-value">${fmtMoney(totalIn - totalOut)}</div></div>`;
+    } else { 
+      statsEl.style.display = 'none'; 
+    }
+  }
   
-  const tbody=document.getElementById('query-tbody');
-  if(results.length===0){ tbody.innerHTML=`<tr><td colspan="6"><div class="empty-state"><i class="ti ti-search"></i><p>查無符合資料</p></div></td></tr>`; return; }
-  
-  const typeTag=t=>t==='income'?'<span class="tag in">收入</span>':t==='expense'?'<span class="tag out">支出</span>':'<span class="tag prev">結存</span>';
-  tbody.innerHTML=results.map(r=>`
-    <tr class="dr">
-      <td>${r.date}</td><td class="mu">${r.acctLabel}</td>
-      <td>${r.subj||''}</td><td class="mu">${r.note||'—'}</td>
-      <td>${typeTag(r.type)}</td>
-      <td><span class="${r.type==='income'?'ni':r.type==='expense'?'no':'mu'}">${fmtMoney(r.amount)}</span></td>
-    </tr>`).join('');
+  const tbody = document.getElementById('query-tbody');
+  if (tbody) {
+    if (results.length === 0) { 
+      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="ti ti-search"></i><p>查無符合資料</p></div></td></tr>`; 
+      return; 
+    }
+    const typeTag = t => t === 'income' ? '<span class="tag in">收入</span>' : t === 'expense' ? '<span class="tag out">支出</span>' : '<span class="tag prev">結存</span>';
+    tbody.innerHTML = results.map(r => `
+      <tr class="dr">
+        <td>${r.date}</td><td class="mu">${r.acctLabel}</td>
+        <td>${r.subj || ''}</td><td class="mu">${r.note || '—'}</td>
+        <td>${typeTag(r.type)}</td>
+        <td><span class="${r.type === 'income' ? 'ni' : r.type === 'expense' ? 'no' : 'mu'}">${fmtMoney(r.amount)}</span></td>
+      </tr>`).join('');
+  }
 }
 
 // ── Excel Export（含抬頭、合計、定存、簽名欄） ─────────────
@@ -1044,50 +1063,39 @@ async function submitLogin() {
 
 // ─── 修改後的權限套用函式 ─────────────────────────────────────
 function applyRolePermissions() {
-  // 1. 抓取角色
   const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
   console.log("正在套用權限，當前角色為:", role);
   
   const allTabs = document.querySelectorAll('.tabs-bar .tab-btn');
+  allTabs.forEach(btn => btn.style.display = ''); // 先全部還原顯示
   
-  // 2. 先把所有選單按鈕強制顯示（初始化歸零）
-  allTabs.forEach(btn => btn.style.display = '');
-  
-  // 3. 清除之前可能殘留的權限隱藏樣式
   let styleEl = document.getElementById('role-style-override');
-  if (styleEl) styleEl.innerHTML = '';
+  if (styleEl) styleEl.innerHTML = ''; // 清除舊樣式
 
-  // ─── 開始分流判斷 ───
   if (role === '一般') {
-    // 【一般】權限：只能看 查詢(query) 和 月報總表(report)
+    // 一般權限：只保留查詢(query)與月報表(report)
     allTabs.forEach(btn => {
       const onclickAttr = btn.getAttribute('onclick') || '';
       if (!onclickAttr.includes('query') && !onclickAttr.includes('report')) {
         btn.style.display = 'none'; 
       }
     });
-    // 隱藏新增記帳面板與刪除按鈕
     injectTemplateStyles(`
       .btn.danger, #fx-add-btn, .panel-hdr .btn.primary, .form-grid { display: none !important; }
     `);
     
   } else if (role === '會計') {
-    // 【會計】權限：看得到全部，能記帳，但不准刪除
+    // 會計權限：不能刪除資料
     injectTemplateStyles(`
       .btn.danger { display: none !important; } 
-      .form-grid { display: grid !important; }  
     `);
     
   } else if (role === '管理員') {
-    // 【管理員】最高權限：全功能開放！
-    // 💡 關鍵：這裡必須確保把所有隱藏樣式通通清空，絕對不能寫 display: none
+    // 💡 溫和無害版：管理員全功能開放，我們不硬性去改 main 或 table 的 display 樣式，
+    // 只確保危險的刪除按鈕跟記帳面板能順利露出來，畫面就絕對不會歪掉了！
     injectTemplateStyles(`
       .btn.danger { display: inline-flex !important; }
-      .form-grid { display: grid !important; }
-      main, .table-wrap, table { display: block !important; width: 100% !important; } /* 確保表格絕對顯示 */
     `);
-    
-    // 讓所有選單通通露出來
     allTabs.forEach(btn => btn.style.display = ''); 
   }
 }
