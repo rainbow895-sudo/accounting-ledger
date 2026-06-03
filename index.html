@@ -1061,23 +1061,35 @@ function applyRolePermissions() {
   }
 }
 
-// ─── 修改後的系統初始化函式 (確保流程順序正確) ──────────────────────
+// ─── 修正後的系統初始化函式 (強迫等待雲端同步完成，再開放查詢) ───
 async function initializeSystem() {
-  // 1. 先確認並套用權限 (這時 sessionStorage 已經有變數了)
+  // 1. 先確認並套用最高權限
   applyRolePermissions(); 
 
-  // 2. 載入定存快取
+  // 2. 載入定存快取 (如果原本系統有這個函式)
   if (typeof loadFixed === 'function') loadFixed(); 
   
-  // 3. 同步雲端帳簿明細
+  // 3. 【核心修正】同部雲端帳簿明細，並強制使用 await 等待它完全下載完畢
   if (typeof loadFromGS === 'function') {
+    setStatus('loading', '雲端資料同步中...'); // 如果系統有狀態列，顯示同步中
+    
+    // 💡 關鍵：必須等 loadFromGS() 真正把所有分頁資料從 GAS 抓回來並存入 db
     const success = await loadFromGS(); 
+    
     if (success) {
-      // 成功後跳轉到查詢頁
+      setStatus('ok', '同步完成');
+      
+      // 4. 確保資料都進到 db 後，再切換到查詢分頁
       switchTab('query');
-      if (typeof runQuery === 'function') runQuery(); 
+      
+      // 5. 強制觸發一次預設查詢，把剛剛從雲端抓下來的歷史資料統統畫出來！
+      if (typeof runQuery === 'function') {
+        console.log("雲端資料下載完畢，開始預設查詢...");
+        runQuery(); 
+      }
     } else {
-      alert('同步雲端資料失敗，請重新整理網頁。');
+      setStatus('err', '雲端同步失敗');
+      alert('同步雲端資料失敗，請確認網路或重新整理網頁。');
     }
   }
 }
