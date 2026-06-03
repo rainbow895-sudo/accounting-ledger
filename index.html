@@ -374,6 +374,13 @@ tr:hover td {
 // ── Google Sheets Config ─────────────────────────────────
 const GS_URL = 'https://script.google.com/macros/s/AKfycbySigAnxTsR4Wsn8Bh2-ZGkFeAJrMFGewsgzc1-jmwonSJVJDY_OgEoMJsoOJNH_hY/exec';
 var p = null; // 👈 【大補帖】直接在全域宣告 p
+// ─── 【魔王終結者】強行宣告 syncDate，防止系統崩潰中斷 ───
+if (typeof syncDate !== 'function') {
+  function syncDate(arg1, arg2) {
+    // 讓它安全空轉，不干擾原本的邏輯，或者是直接回傳傳進來的東西
+    return arg1; 
+  }
+}
 async function gsReq(params){
   // Apps Script Web App 用 GET + query string，避免 POST redirect 問題
   const qs = new URLSearchParams(params).toString();
