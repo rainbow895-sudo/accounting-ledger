@@ -986,12 +986,25 @@ async function submitLogin() {
     const res = await gsReq({ action: 'login', username: user, password: pwd });
 
     if (res.success) {
-      // 【關鍵】驗證成功，移除登入遮罩，讓後方主畫面露出來
+      // 1. 驗證成功，移除登入遮罩，讓後方主畫面露出來
       document.getElementById('login-overlay').style.display = 'none';
       
-      // 可以在這裡儲存權限資訊供後續使用
-      window.userRole = res.role; 
+      // 2. 【大補帖】把所有可能用到的權限儲存方式一次塞滿，讓原本系統絕對讀得到！
+      window.userRole = res.role;                                // 記憶體儲存
+      sessionStorage.setItem('beiji_user_role', res.role);       // 新版網頁儲存
+      sessionStorage.setItem('userRole', res.role);             // 舊版網頁儲存
+      
       console.log("登入成功，角色為:", res.role);
+
+      // 3. 強制通知系統「立刻重新檢查並套用權限」
+      if (typeof applyRolePermissions === 'function') {
+        applyRolePermissions();
+      }
+      
+      // 4. 如果系統有需要重新載入或初始化的動作，就在這裡順便執行
+      if (typeof initializeSystem === 'function') {
+        initializeSystem();
+      }
     } else {
       err.innerText = res.message || "帳號或密碼錯誤";
       btn.disabled = false;
