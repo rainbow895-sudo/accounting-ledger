@@ -74,7 +74,7 @@
       </div>
       
       <button class="login-btn" id="login-btn" onclick="submitLogin()">
-        <i class="ti ti-login"></i> 登入
+        <i class="ti ti-login"></i> 安全登入
       </button>
       <div id="login-err" class="login-err"></div>
     </div>
@@ -922,36 +922,39 @@ async function gsReq(params) {
   return await response.json();
 }
 async function submitLogin() {
-  const userInput = document.getElementById('login-user');
-  const pwdInput = document.getElementById('login-pwd');
+  const user = document.getElementById('login-user').value;
+  const pwd = document.getElementById('login-pwd').value;
   const btn = document.getElementById('login-btn');
-  const errEl = document.getElementById('login-err');
-  
-  const user = userInput.value.trim();
-  const pwd = pwdInput.value.trim();
-  
-  if (!user || !pwd) { errEl.textContent = '請填寫帳號與密碼'; return; }
-  
+  const err = document.getElementById('login-err');
+
+  if (!user || !pwd) {
+    err.innerText = "請輸入帳號與密碼";
+    return;
+  }
+
   btn.disabled = true;
-  btn.innerHTML = '<i class="ti ti-loader spin"></i> 驗證權限中…';
-  errEl.textContent = '';
-  
+  btn.innerHTML = '<i class="ti ti-loader-2 animate-spin"></i> 驗證中...';
+  err.innerText = "";
+
   try {
-    const res = await gsReq({ action: 'login', user: user, password: pwd });
+    // 呼叫後端 GAS
+    const res = await gsReq({ action: 'login', username: user, password: pwd });
+
     if (res.success) {
-      sessionStorage.setItem('beiji_logged_in', 'true');
-      sessionStorage.setItem('beiji_user_role', res.role);
-      
+      // 【關鍵】驗證成功，移除登入遮罩，讓後方主畫面露出來
       document.getElementById('login-overlay').style.display = 'none';
-      await initializeSystem();
+      
+      // 可以在這裡儲存權限資訊供後續使用
+      window.userRole = res.role; 
+      console.log("登入成功，角色為:", res.role);
     } else {
-      errEl.textContent = res.error || '帳號或密碼錯誤';
-      pwdInput.value = '';
-      pwdInput.focus();
+      err.innerText = res.message || "帳號或密碼錯誤";
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-login"></i> 安全登入';
     }
-  } catch (err) {
-    errEl.textContent = '連線失敗，請檢查網路或後端部署網址';
-  } finally {
+  } catch (e) {
+    console.error(e);
+    err.innerText = "連線異常，請確認 GAS 是否已發布";
     btn.disabled = false;
     btn.innerHTML = '<i class="ti ti-login"></i> 安全登入';
   }
