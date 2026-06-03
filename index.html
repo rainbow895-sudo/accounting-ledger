@@ -1020,17 +1020,20 @@ async function submitLogin() {
 
 // ─── 修改後的權限套用函式 ─────────────────────────────────────
 function applyRolePermissions() {
-  // 強制從當前 Session 抓取登入時儲存的角色，如果真沒有才預設一般
-  const role = sessionStorage.getItem('beiji_user_role') || '一般';
-  console.log("當前套用的權限角色為:", role); // 👈 可以在 F12 檢查有沒有抓到 "管理員"
+  // 1. 抓取角色
+  const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
+  console.log("正在套用權限，當前角色為:", role);
   
   const allTabs = document.querySelectorAll('.tabs-bar .tab-btn');
   
-  // 先把所有按鈕跟樣式重設歸零
+  // 2. 先把所有選單按鈕強制顯示（初始化歸零）
   allTabs.forEach(btn => btn.style.display = '');
+  
+  // 3. 清除之前可能殘留的權限隱藏樣式
   let styleEl = document.getElementById('role-style-override');
   if (styleEl) styleEl.innerHTML = '';
 
+  // ─── 開始分流判斷 ───
   if (role === '一般') {
     // 【一般】權限：只能看 查詢(query) 和 月報總表(report)
     allTabs.forEach(btn => {
@@ -1039,7 +1042,7 @@ function applyRolePermissions() {
         btn.style.display = 'none'; 
       }
     });
-    // 隱藏新增面板與表格中的刪除按鈕
+    // 隱藏新增記帳面板與刪除按鈕
     injectTemplateStyles(`
       .btn.danger, #fx-add-btn, .panel-hdr .btn.primary, .form-grid { display: none !important; }
     `);
@@ -1052,13 +1055,28 @@ function applyRolePermissions() {
     `);
     
   } else if (role === '管理員') {
-    // 【管理員】最高權限：全開，確保所有按鈕都強制顯示出來
+    // 【管理員】最高權限：全功能開放！
+    // 💡 關鍵：這裡必須確保把所有隱藏樣式通通清空，絕對不能寫 display: none
     injectTemplateStyles(`
       .btn.danger { display: inline-flex !important; }
       .form-grid { display: grid !important; }
+      main, .table-wrap, table { display: block !important; width: 100% !important; } /* 確保表格絕對顯示 */
     `);
+    
+    // 讓所有選單通通露出來
     allTabs.forEach(btn => btn.style.display = ''); 
   }
+}
+
+// 輔助函式：確保樣式注入不會蓋掉主畫面
+function injectTemplateStyles(cssText) {
+  let styleEl = document.getElementById('role-style-override');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'role-style-override';
+    document.head.appendChild(styleEl);
+  }
+  styleEl.innerHTML = cssText;
 }
 
 // ─── 修正後的系統初始化函式 (強迫等待雲端同步完成，再開放查詢) ───
