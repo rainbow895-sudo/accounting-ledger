@@ -53,6 +53,48 @@
       --serif: 'Noto Serif TC', serif; --sans: 'Noto Sans TC', sans-serif; 
     }
     body { font-family: var(--sans); background: var(--bg); color: var(--ink); min-height: 100vh; }
+
+    /* ─── 補回遺失的網頁主體排版與核心 CSS ─── */
+*, *:before, *:after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root { 
+  --gold: #B8972A; --gold-light: #F0D980; --gold-dim: #7A621C; 
+  --ink: #1A1209; --ink-mid: #3D2E0F; --ink-soft: #7A6440; 
+  --paper: #FBF6EC; --paper-mid: #F2E8D0; --paper-dark: #E4D5B0; 
+  --bg: #EDE3CC; --green: #1A6B3C; --green-light: #EBF5EE; 
+  --blue: #1A3A6B; --blue-light: #EBEFF5; --red: #C0392B; --red-light: #FDEBE8; 
+  --shadow: 0 2px 12px rgba(60,60,10,0.12); --radius: 6px; 
+  --serif: 'Noto Serif TC', serif; --sans: 'Noto Sans TC', sans-serif; 
+}
+
+body { font-family: var(--sans); background: var(--bg); color: var(--ink); min-height: 100vh; padding: 0; margin: 0; }
+
+/* 頂部標題列 */
+.site-header { 
+  background: var(--ink); padding: 0 2rem; display: flex; align-items: center; 
+  justify-content: space-between; height: 58px; border-bottom: 2px solid var(--gold); 
+}
+.site-logo { font-family: var(--serif); font-size: 19px; font-weight: 700; color: var(--gold-light); letter-spacing: .1em; display: flex; align-items: center; gap: 10px; }
+.sync-status { font-size: 12px; display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(240,217,128,.3); color: rgba(240,217,128,.7); white-space: nowrap; }
+
+/* 導覽功能分頁列 */
+.tabs-bar { background: var(--ink-mid); display: flex; align-items: center; gap: 2px; padding: 0 2rem; overflow-x: auto; border-bottom: 2px solid transparent; transition: all .15s; }
+.tab-btn { background: transparent; border: none; color: rgba(240,217,128,.55); cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; transition: all .15s; padding: 10px 16px; font-size: 13px; font-family: var(--sans); font-weight: 500; }
+.tab-btn:hover { color: var(--gold-light); }
+.tab-btn.active { color: var(--gold-light); border-bottom-color: var(--gold); font-weight: 700; }
+
+/* 主要內容區域 */
+main { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.summary-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+.sum-card { background: var(--paper); border: 1px solid var(--paper-dark); border-radius: var(--radius); padding: 1rem 1.25rem; box-shadow: var(--shadow); }
+.sum-label { font-size: 11px; color: var(--ink-soft); display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+.sum-value { font-family: var(--serif); font-size: 18px; font-weight: 700; color: var(--ink); }
+
+/* 按鈕基本樣式 */
+.btn { font-size: 13px; height: 31px; border-radius: var(--radius); border: 1px solid var(--paper-dark); background: var(--paper); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; padding: 0 13px; font-family: var(--sans); transition: all .15s; white-space: nowrap; text-decoration: none; }
+.btn:hover { background: var(--paper-mid); }
+.btn.primary { background: var(--gold); color: #fff; border-color: var(--gold); font-weight: 600; }
+.btn.primary:hover { background: var(--ink); }
   </style>
 </head>
 
