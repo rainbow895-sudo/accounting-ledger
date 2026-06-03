@@ -774,46 +774,75 @@ function exportExcel() {
   XLSX.writeFile(wb, `北極殿帳務明細表_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 // ── Query ─────────────────────────────────────────────────
-function runQuery(){
-  const acctFilter=document.getElementById('q-acct').value;
-  const typeFilter=document.getElementById('q-type').value;
-  const dateFrom=document.getElementById('q-date-from').value.trim();
-  const dateTo=document.getElementById('q-date-to').value.trim();
-  const keyword=document.getElementById('q-keyword').value.trim().toLowerCase();
-  let results=[];
-  ACCT_KEYS.forEach(acct=>{
-    db[acct].forEach(e=>{
-      const acctLabel=ACCT_META[acct].label;
-      if(acctFilter&&acctLabel!==acctFilter) return;
-      if(typeFilter&&TYPE_MAP[e.type]!==typeFilter) return;
-      if(dateFrom&&(e.date||'')<dateFrom) return;
-      if(dateTo&&(e.date||'')>dateTo) return;
-      if(keyword){ const h=((e.subj||'')+(e.note||'')).toLowerCase(); if(!h.includes(keyword)) return; }
-      results.push({...e,acctLabel});
+// ─── 修正後的查詢函式：預設自動鎖定當月資料 ───
+function runQuery() {
+  // 1. 取得使用者在畫面上選擇的篩選條件
+  const acctSelect = document.getElementById('query-acct').value; // 'all' 或特定帳戶
+  const typeSelect = document.getElementById('query-type').value; // 'all'、'income'、'expense'
+  const keyword    = document.getElementById('query-keyword').value.trim().toLowerCase();
+  
+  let startVal = document.getElementById('query-start').value; // 起始日期
+  let endVal   = document.getElementById('query-end').value;   // 結束日期
+
+  // 💡 【核心修正】如果使用者「沒有主動挑選日期」（剛登入重開時），自動幫他預設為當月 1 號到今天！
+  if (!startVal && !endVal) {
+    const now = new Date();
+    const year = now.getFullYear();
+    // 月份補零，例如 6 月變成 "06"
+    const month = String(now.getMonth() + 1).padStart(2, '0'); 
+    const today = String(now.getDate()).padStart(2, '0');
+    
+    startVal = `${year}-${month}-01`; // 當月 1 號
+    endVal   = `${year}-${month}-${today}`; // 今天
+    
+    // 順便把這兩個日期填回畫面的日期輸入框上，讓使用者一目了然
+    document.getElementById('query-start').value = startVal;
+    document.getElementById('query-end').value = endVal;
+  }
+
+  // 2. 開始準備搜集符合條件的資料
+  let results = [];
+
+  // 決定要撈哪些帳戶的資料 (db 是您前端存歷史資料的全域物件)
+  const acctsToSearch = (acctSelect === 'all') ? Object.keys(db) : [acctSelect];
+
+  acctsToSearch.forEach(acct => {
+    if (!db[acct]) return;
+    
+    db[acct].forEach(entry => {
+      // ─── A. 日期過濾 ───
+      if (startVal && entry.date < startVal) return;
+      if (endVal && entry.date > endVal) return;
+
+      // ─── B. 類型過濾 (收入/支出) ───
+      if (typeSelect !== 'all' && entry.type !== typeSelect) return;
+
+      // ─── C. 關鍵字過濾 (科目、商家、摘要) ───
+      if (keyword) {
+        const s = (entry.subj || '').toLowerCase();
+        const n = (entry.note || '').toLowerCase();
+        if (!s.includes(keyword) && !n.includes(keyword)) return;
+      }
+
+      // 通過重重考驗，塞進結果清單（順便帶上帳戶名稱，方便合併查詢時分辨）
+      results.push({
+        ...entry,
+        acctLabel: ACCT_META[acct] ? ACCT_META[acct].label : acct
+      });
     });
   });
-  results.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  const totalIn=results.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
-  const totalOut=results.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
-  document.getElementById('query-count').textContent=`共 ${results.length} 筆`;
-  const statsEl=document.getElementById('query-stats');
-  if(results.length>0){
-    statsEl.style.display='grid';
-    statsEl.innerHTML=`
-      <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>收入合計</div><div class="sum-value g">${fmtMoney(totalIn)}</div></div>
-      <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>支出合計</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
-      <div class="sum-card hl"><div class="sum-label"><i class="ti ti-calculator"></i>收支差額</div><div class="sum-value">${fmtMoney(totalIn-totalOut)}</div></div>`;
-  } else { statsEl.style.display='none'; }
-  const tbody=document.getElementById('query-tbody');
-  if(results.length===0){ tbody.innerHTML=`<tr><td colspan="6"><div class="empty-state"><i class="ti ti-search"></i><p>查無符合資料</p></div></td></tr>`; return; }
-  const typeTag=t=>t==='income'?'<span class="tag in">收入</span>':t==='expense'?'<span class="tag out">支出</span>':'<span class="tag prev">結存</span>';
-  tbody.innerHTML=results.map(r=>`
-    <tr class="dr">
-      <td>${r.date}</td><td class="mu">${r.acctLabel}</td>
-      <td>${r.subj||''}</td><td class="mu">${r.note||'—'}</td>
-      <td>${typeTag(r.type)}</td>
-      <td><span class="${r.type==='income'?'ni':r.type==='expense'?'no':'mu'}">${fmtMoney(r.amount)}</span></td>
-    </tr>`).join('');
+
+  // 3. 將篩選完的資料排序（依日期從新到舊，或從舊到新，依您的舊邏輯而定）
+  // 這裡範例為從新到舊排序
+  results.sort((a, b) => b.date.localeCompare(a.date));
+
+  // 4. 最後呼叫您原本系統負責把 results 陣列畫成 HTML 表格的函式
+  // 💡 請確認您原本負責渲染查詢結果的函式名稱叫什麼，通常是 renderQueryResults(results) 
+  if (typeof renderQueryResults === 'function') {
+    renderQueryResults(results);
+  } else if (typeof renderTable === 'function') {
+    renderTable(results); // 有些系統叫 renderTable
+  }
 }
 
 // ── Excel Export（含抬頭、合計、定存、簽名欄） ─────────────
