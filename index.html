@@ -95,6 +95,125 @@ main { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
 .btn:hover { background: var(--paper-mid); }
 .btn.primary { background: var(--gold); color: #fff; border-color: var(--gold); font-weight: 600; }
 .btn.primary:hover { background: var(--ink); }
+
+ /* ─── 補回遺失的查詢區域與表格專用 CSS ─── */
+
+/* 查詢表單格線排版 */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  background: var(--paper);
+  border: 1px solid var(--paper-dark);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  box-shadow: var(--shadow);
+  margin-bottom: 1.5rem;
+  align-items: flex-end; /* 讓按鈕與輸入框底部對齊 */
+}
+
+/* 表單內部的輸入欄位群組 */
+.fg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fg label {
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+/* 輸入框、下拉選單的基本樣式優化 */
+.fg input, .fg select, .search-bar input {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--paper-dark);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.fg input:focus, .fg select:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(184,151,42,.15);
+}
+
+/* 關鍵字搜尋列專用 */
+.search-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+/* 查詢結果與表格外框 */
+.panel-title {
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gold-dim);
+  margin-bottom: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  background: var(--paper);
+  border: 1px solid var(--paper-dark);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-top: 0.5rem;
+}
+
+/* 表格本體 */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+th {
+  background: var(--paper-mid);
+  color: var(--ink-mid);
+  font-weight: 700;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--paper-dark);
+  white-space: nowrap;
+}
+
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--paper-mid);
+  color: var(--ink);
+  vertical-align: middle;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover td {
+  background: var(--paper-light);
+}
+
+/* 查無資料的提示樣式 */
+.empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--ink-soft);
+  font-size: 13px;
+}   
   </style>
 </head>
 
@@ -886,51 +1005,67 @@ async function submitLogin() {
   }
 }
 
+// ─── 修改後的權限套用函式 ─────────────────────────────────────
 function applyRolePermissions() {
+  // 強制從當前 Session 抓取登入時儲存的角色，如果真沒有才預設一般
   const role = sessionStorage.getItem('beiji_user_role') || '一般';
+  console.log("當前套用的權限角色為:", role); // 👈 可以在 F12 檢查有沒有抓到 "管理員"
+  
   const allTabs = document.querySelectorAll('.tabs-bar .tab-btn');
   
-  // 先把所有人重設回預設樣式
+  // 先把所有按鈕跟樣式重設歸零
   allTabs.forEach(btn => btn.style.display = '');
   let styleEl = document.getElementById('role-style-override');
   if (styleEl) styleEl.innerHTML = '';
 
   if (role === '一般') {
-    // 【一般】權限：只准看查詢與月報
+    // 【一般】權限：只能看 查詢(query) 和 月報總表(report)
     allTabs.forEach(btn => {
       const onclickAttr = btn.getAttribute('onclick') || '';
       if (!onclickAttr.includes('query') && !onclickAttr.includes('report')) {
-        btn.style.display = 'none';
+        btn.style.display = 'none'; 
       }
     });
-    // 透過 CSS 強制隱藏所有記帳面板與刪除按鈕
-    injectTemplateStyles(`.btn.danger, #fx-add-btn, .panel-hdr .btn.primary, .form-grid { display: none !important; }`);
+    // 隱藏新增面板與表格中的刪除按鈕
+    injectTemplateStyles(`
+      .btn.danger, #fx-add-btn, .panel-hdr .btn.primary, .form-grid { display: none !important; }
+    `);
+    
   } else if (role === '會計') {
     // 【會計】權限：看得到全部，能記帳，但不准刪除
-    injectTemplateStyles(`.btn.danger { display: none !important; } .form-grid { display: grid !important; }`);
+    injectTemplateStyles(`
+      .btn.danger { display: none !important; } 
+      .form-grid { display: grid !important; }  
+    `);
+    
+  } else if (role === '管理員') {
+    // 【管理員】最高權限：全開，確保所有按鈕都強制顯示出來
+    injectTemplateStyles(`
+      .btn.danger { display: inline-flex !important; }
+      .form-grid { display: grid !important; }
+    `);
+    allTabs.forEach(btn => btn.style.display = ''); 
   }
-  // 管理員權限不需要加任何隱藏 CSS
 }
 
-function injectTemplateStyles(cssString) {
-  let styleEl = document.getElementById('role-style-override');
-  if (!styleEl) {
-    styleEl = document.createElement('style');
-    styleEl.id = 'role-style-override';
-    document.head.appendChild(styleEl);
-  }
-  styleEl.innerHTML = cssString;
-}
-
+// ─── 修改後的系統初始化函式 (確保流程順序正確) ──────────────────────
 async function initializeSystem() {
-  applyRolePermissions();
-  loadFixed();
-  const success = await loadFromGS();
-  if (success) {
-    switchTab('query');
-    if (typeof runQuery === 'function') runQuery();
-  } else {
-    alert('同步雲端資料失敗，請檢查網路並重新整理。');
+  // 1. 先確認並套用權限 (這時 sessionStorage 已經有變數了)
+  applyRolePermissions(); 
+
+  // 2. 載入定存快取
+  if (typeof loadFixed === 'function') loadFixed(); 
+  
+  // 3. 同步雲端帳簿明細
+  if (typeof loadFromGS === 'function') {
+    const success = await loadFromGS(); 
+    if (success) {
+      // 成功後跳轉到查詢頁
+      switchTab('query');
+      if (typeof runQuery === 'function') runQuery(); 
+    } else {
+      alert('同步雲端資料失敗，請重新整理網頁。');
+    }
   }
 }
 
