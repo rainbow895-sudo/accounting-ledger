@@ -783,7 +783,7 @@ function exportExcel() {
 // ── Query ─────────────────────────────────────────────────
 // ─── 修正後的查詢函式：預設自動鎖定當月資料 ───
 function runQuery(){
-  // ─── 智慧鎖定當月，改用標準橫線格式 ───
+  // ─── 智慧鎖定當月 (調整為真正當月 1 號) ───
   let dateFromEl = document.getElementById('q-date-from');
   let dateToEl = document.getElementById('q-date-to');
   
@@ -793,15 +793,13 @@ function runQuery(){
     const month = String(now.getMonth() + 1).padStart(2, '0'); 
     const today = String(now.getDate()).padStart(2, '0');      
     
-    // 💡 修正：確保底層賦值與讀取都是標準的 YYYY-MM-DD
-    dateFromEl.value = `${year}-${month}-01`;
+    dateFromEl.value = `${year}-${month}-01`; // 確保是當月 1 號
     dateToEl.value = `${year}-${month}-${today}`;
   }
 
   const acctFilter = document.getElementById('q-acct').value;
   const typeFilter = document.getElementById('q-type').value;
   
-  // 💡 安全防護：將所有日期中的斜線 "/" 統一置換成橫線 "-"，確保比對時不會出錯
   const dateFrom = dateFromEl.value.trim().replace(/\//g, '-');
   const dateTo   = dateToEl.value.trim().replace(/\//g, '-');
   const keyword  = document.getElementById('q-keyword').value.trim().toLowerCase();
@@ -815,8 +813,15 @@ function runQuery(){
         if (acctFilter && acctLabel !== acctFilter) return;
         if (typeFilter && TYPE_MAP[e.type] !== typeFilter) return;
         
-        // 💡 關鍵：把資料庫裡的日期也統一換成橫線做比對
-        const entryDate = (e.date || '').trim().replace(/\//g, '-');
+        // 💡 【核心修正 1】如果日期帶有 T16:00...，或是斜線，統一清洗並切除，唯獨保留前 10 碼 (YYYY-MM-DD)
+        let rawDate = String(e.date || '').trim().replace(/\//g, '-');
+        if (rawDate.includes('T')) {
+          rawDate = rawDate.split('T')[0]; // 只拿 T 前面的日期
+        } else {
+          rawDate = rawDate.substring(0, 10); // 只取前 10 碼
+        }
+        
+        const entryDate = rawDate;
         if (dateFrom && entryDate < dateFrom) return;
         if (dateTo && entryDate > dateTo) return;
         
@@ -824,12 +829,12 @@ function runQuery(){
           const h = ((e.subj || '') + (e.note || '')).toLowerCase(); 
           if (!h.includes(keyword)) return; 
         }
-        results.push({ ...e, acctLabel });
+        // 💡 儲存乾淨的 10 碼日期回去
+        results.push({ ...e, date: entryDate, acctLabel });
       });
     });
   }
   
-  // 日期從舊到新排序
   results.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   
   const totalIn  = results.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
