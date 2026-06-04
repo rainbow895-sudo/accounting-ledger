@@ -553,22 +553,31 @@ function editRowInline(acct, id, btn) {
   
   tr.classList.add('is-editing');
   
-  // 抓出原本這一列在暫存裡的原始資料
   const item = currentAddedEntries[acct].find(e => e.id === id);
   if (!item) return;
 
-  // 取得各個儲存格欄位
   const dateTd = tr.querySelector('.cell-date');
   const subjTd = tr.querySelector('.cell-subj');
   const noteTd = tr.querySelector('.cell-note');
+  const incTd = tr.querySelector('.cell-inc');
+  const expTd = tr.querySelector('.cell-exp');
   const actionTd = btn.parentElement;
 
-  // 將表格內容轉換為互動式 Input 輸入框
-  dateTd.innerHTML = `<input type="text" class="edit-input-date" value="${item.date}" style="width:90px; padding:2px;">`;
+  // 1. 基本字串變身輸入框
+  dateTd.innerHTML = `<input type="text" class="edit-input-date" value="${item.date}" style="width:85px; padding:2px;">`;
   subjTd.innerHTML = `<input type="text" class="edit-input-subj" value="${item.subj}" style="width:100px; padding:2px;">`;
   noteTd.innerHTML = `<input type="text" class="edit-input-note" value="${item.note}" style="width:120px; padding:2px;">`;
 
-  // 按鈕變身為 儲存 與 取消
+  // 2. 💡【核心金額解鎖】根據原本是收入或支出，將金額轉為輸入框
+  if (item.type === 'income') {
+    incTd.innerHTML = `<input type="number" class="edit-input-amount" value="${item.amount}" style="width:80px; padding:2px; color:#28a745; font-weight:bold;">`;
+    expTd.innerHTML = '<span class="mu">—</span>';
+  } else {
+    incTd.innerHTML = '<span class="mu">—</span>';
+    expTd.innerHTML = `<input type="number" class="edit-input-amount" value="${item.amount}" style="width:80px; padding:2px; color:#dc3545; font-weight:bold;">`;
+  }
+
+  // 3. 按鈕變身
   actionTd.innerHTML = `
     <button class="btn success" style="padding:4px 8px; font-size:12px; background-color:#28a745; color:white; margin-right:4px;" onclick="saveRowInline('${acct}','${id}',this)"><i class="ti ti-check"></i> 儲存</button>
     <button class="btn" style="padding:4px 8px; font-size:12px; background-color:#6c757d; color:white;" onclick="renderAcct('${acct}')"><i class="ti ti-x"></i> 取消</button>
@@ -583,54 +592,53 @@ async function saveRowInline(acct, id, btn) {
   const newDate = tr.querySelector('.edit-input-date').value.trim();
   const newSubj = tr.querySelector('.edit-input-subj').value.trim();
   const newNote = tr.querySelector('.edit-input-note').value.trim();
+  const newAmount = parseFloat(tr.querySelector('.edit-input-amount').value);
 
   if(!newDate || !newSubj) { alert('日期與科目不能留空！'); return; }
+  if(isNaN(newAmount) || newAmount < 0) { alert('請輸入正確的金額！'); return; }
 
   btn.disabled = true; btn.innerHTML = '…';
-  setStatus('loading', '雲端資料修改中...');
+  setStatus('loading', '雲端資料同步修改中...');
 
   try {
-    // 1. 撈出暫存裡的原始物件（確保金額與類型不變）
     const oldItem = currentAddedEntries[acct].find(e => e.id === id);
     if (!oldItem) throw new Error("找不到原始資料");
 
-    // 💡【免改後端大絕招】利用現有的 delete 與 add 組合出 edit 的效果！
-    // 第一步：先向雲端發送刪除指令，拔掉舊的那一筆
+    // 第一步：先從雲端刪除舊的那一筆
     const delRes = await gsReq({ action: 'delete', id: String(id) });
     if(delRes.error) throw new Error("移除舊資料失敗: " + delRes.error);
 
-    // 第二步：緊接著發送新增指令，把修改後的內容當作新的一筆塞進去
+    // 第二步：發送新增指令，這次帶入您修改後的【新金額 newAmount】！
     const addRes = await gsReq({
       action: 'add', 
       date: newDate, 
       subj: newSubj, 
       note: newNote || '', 
       type: TYPE_MAP[oldItem.type] || oldItem.type, 
-      amount: String(oldItem.amount), 
+      amount: String(newAmount), // 💡 塞入新金額
       acct: ACCT_META[acct].label
     });
     if(addRes.error) throw new Error("同步新資料失敗: " + addRes.error);
 
-    // 2. 獲取雲端試算表重新產生的新 ID
     const newId = String(addRes.id);
 
-    // 3. 同步更新前端大倉庫 db (先把舊的濾掉，把新的推入)
+    // 同步更新前端大倉庫 db
     db[acct] = db[acct].filter(e => e.id !== id);
-    const updatedEntry = { id: newId, date: newDate, subj: newSubj, note: newNote, type: oldItem.type, amount: oldItem.amount };
+    const updatedEntry = { id: newId, date: newDate, subj: newSubj, note: newNote, type: oldItem.type, amount: newAmount };
     db[acct].push(updatedEntry);
     sortEntries(db[acct]);
 
-    // 4. 同步更新當前畫面的新增暫存陣列
+    // 同步更新當前畫面的新增暫存陣列
     currentAddedEntries[acct] = currentAddedEntries[acct].filter(e => e.id !== id);
     currentAddedEntries[acct].push(updatedEntry);
 
-    // 5. 重新刷新該分頁畫面，並提示成功
+    // 重新刷新畫面，上方統計卡片會即時重新計算！
     renderAcct(acct);
     setStatus('ok', '修改成功');
   } catch(e) {
     alert('修改失敗：' + e.message);
     setStatus('err', '修改失敗');
-    renderAcct(acct); // 失敗時倒回原樣
+    renderAcct(acct);
   }
 }
   
@@ -742,7 +750,7 @@ function updateFilter(acct){
 function renderAcct(acct){
   updateFilter(acct);
   
-  // 💡 計算上方四大统计卡片時，依然使用 db[acct] 全域大倉庫，確保結存金額 100% 正確
+  // 計算上方四大統計卡片 (維持 db[acct] 大倉庫，確保結存金額 100% 正確)
   const entries=db[acct];
   let running=0;
   entries.forEach(e=>{
@@ -760,16 +768,15 @@ function renderAcct(acct){
     <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>本期支出</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
     <div class="sum-card hl"><div class="sum-label"><i class="ti ti-wallet"></i>本期結存</div><div class="sum-value">${fmtMoney(running)}</div></div>`;
 
-  // ─── 💡【最核心改變】下方明細表格「只渲染剛剛新增的項目」 ───
+  // 下方明細表格「只渲染剛剛新增的項目」
   const displayRows = currentAddedEntries[acct] || [];
   const tbody=document.getElementById(acct+'-tbody');
   
   if(displayRows.length===0){
-    tbody.innerHTML=`<tr><td colspan="7"><div class="empty-state"><i class="ti ti-inbox"></i><p>當前尚無新增資料，請於上方填寫明細</p></div></td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="6"><div class="empty-state"><i class="ti ti-inbox"></i><p>當前尚無新增資料，請於上方填寫明細</p></div></td></tr>`;
     return;
   }
   
-  // 取得當前使用者角色
   const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
 
   tbody.innerHTML=displayRows.map(r=>{
@@ -777,36 +784,32 @@ function renderAcct(acct){
     const inc=isPrev?`<span class="mu" style="font-size:12px">結存</span>`:isIn?`<span class="ni">${fmtMoney(r.amount)}</span>`:'<span class="mu">—</span>';
     const exp=(!isPrev&&!isIn)?`<span class="no">${fmtMoney(r.amount)}</span>`:'<span class="mu">—</span>';
     
-    // 💡 權限控管按鈕結構
     let actionButtons = '';
     if (role === '管理員') {
-      // 管理員：擁有「編輯」與「刪除」
       actionButtons = `
         <button class="btn primary" style="padding:4px 8px; font-size:12px; margin-right:4px;" onclick="editRowInline('${acct}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>
         <button class="btn danger" style="padding:4px 8px; font-size:12px;" onclick="removeEntry('${acct}','${r.id}')"><i class="ti ti-trash"></i> 刪除</button>
       `;
     } else if (role === '會計') {
-      // 會計：只有「編輯」，不能刪除
       actionButtons = `
         <button class="btn primary" style="padding:4px 8px; font-size:12px;" onclick="editRowInline('${acct}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>
       `;
     } else {
-      // 一般人：啥按鈕都沒有
       actionButtons = `<span class="mu">無權限</span>`;
     }
 
+    // 💡 調整表格 TD 結構，將原本最後一格的多餘資訊移除
     return `<tr class="${isPrev?'pr':'dr'}" id="row-${acct}-${r.id}">
       <td class="cell-date">${r.date}</td>
       <td class="cell-subj">${r.subj||''}</td>
       <td class="cell-note mu">${r.note||'—'}</td>
       <td class="cell-inc">${inc}</td>
       <td class="cell-exp">${exp}</td>
-      <td><span class="mu">現行確認</span></td>
-      <td style="white-space: nowrap;">${actionButtons}</td>
+      <td style="white-space: nowrap; text-align: right;">${actionButtons}</td>
     </tr>`;
   }).join('');
 }
-
+  
 // ── Fixed ─────────────────────────────────────────────────
 function renderFixed(){
   const latest={B:0,C:0,D:0,E:0};
