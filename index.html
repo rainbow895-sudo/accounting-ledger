@@ -221,7 +221,7 @@ tr:hover td {
 <div id="login-overlay" class="login-overlay">
   <div class="login-box">
     <div style="font-size: 40px; color: var(--gold); margin-bottom: 10px;"><i class="ti ti-lock-square-rounded"></i></div>
-    <div class="login-title">北極殿帳務管理系統</div>
+    <div class="login-title">九肉北極殿帳務管理系統</div>
     <div class="login-subtitle">請輸入權限帳密以進行審閱</div>
     
     <div class="fg">
@@ -241,7 +241,7 @@ tr:hover td {
   </div>
 </div>
 <header class="site-header">
-  <div class="site-logo"><i class="ti ti-building-temple"></i>北極殿帳務管理系統</div>
+  <div class="site-logo"><i class="ti ti-building-temple"></i>九肉北極殿帳務管理系統</div>
   <div style="display:flex;align-items:center;gap:8px;">
     <span class="sync-status loading" id="sync-status"><i class="ti ti-cloud spin"></i>連線中…</span>
     <button class="btn ghost" onclick="exportExcel()"><i class="ti ti-file-spreadsheet"></i>匯出 Excel</button>
@@ -914,7 +914,7 @@ function exportExcel() {
     const ws = XLSX.utils.json_to_sheet(data);
     XLSX.utils.book_append_sheet(wb, ws, ACCT_META[key].label);
   });
-  XLSX.writeFile(wb, `北極殿帳務明細表_${new Date().toISOString().slice(0,10)}.xlsx`);
+  XLSX.writeFile(wb, `九肉北極殿帳務明細表_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 // ── Query ─────────────────────────────────────────────────
 // ─── 修正後的查詢函式：預設自動鎖定當月資料 ───
@@ -1143,7 +1143,7 @@ function exportExcel(){
   });
 
   if(wb.SheetNames.length===0){ alert('沒有資料可匯出'); return; }
-  XLSX.writeFile(wb,'北極殿帳務_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  XLSX.writeFile(wb,'九肉北極殿帳務_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
 // ── Init ──────────────────────────────────────────────────
