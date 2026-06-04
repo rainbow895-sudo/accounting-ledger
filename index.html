@@ -792,7 +792,6 @@ function runQuery(){
     const month = String(now.getMonth() + 1).padStart(2, '0'); 
     const today = String(now.getDate()).padStart(2, '0');      
     
-    // 預設為西元格式字串
     dateFromEl.value = `${year}-${month}-01`;
     dateToEl.value = `${year}-${month}-${today}`;
   }
@@ -800,9 +799,9 @@ function runQuery(){
   const acctFilter = document.getElementById('q-acct').value;
   const typeFilter = document.getElementById('q-type').value;
   
-  // 統一清洗前端輸入日期格式為 YYYY-MM-DD
-  const dateFrom = dateFromEl.value.trim().replace(/\//g, '-');
-  const dateTo   = dateToEl.value.trim().replace(/\//g, '-');
+  // 統一將前端日期欄位清洗成標準橫線格式
+  const dateFrom = dateFromEl.value.trim().replace(/[\/\.]/g, '-');
+  const dateTo   = dateToEl.value.trim().replace(/[\/\.]/g, '-');
   const keyword  = document.getElementById('q-keyword').value.trim().toLowerCase();
   
   let results = [];
@@ -814,26 +813,22 @@ function runQuery(){
         if (acctFilter && acctLabel !== acctFilter) return;
         if (typeFilter && TYPE_MAP[e.type] !== typeFilter) return;
         
-        // ─── 💡 【核心修正：民國年自動相容轉換機制】 ───
-        let rawDate = String(e.date || '').trim().replace(/\//g, '-');
+        // 💡【核心大修正】將斜線 / 和 點點 . 通通轉換成橫線 -，消滅 ASCII 編碼打架問題！
+        let rawDate = String(e.date || '').trim().replace(/[\/\.]/g, '-');
         if (rawDate.includes('T')) {
           rawDate = rawDate.split('T')[0];
         } else {
           rawDate = rawDate.substring(0, 10);
         }
         
-        // 用來進行時間邏輯比對的隱藏變數
         let compareDate = rawDate; 
         
-        // 檢查是不是民國年格式 (例如：115-06-03 或 115.06.03)
-        // 只要開頭是 115 且長度在 8~10 碼之間
-        if (rawDate.startsWith('115-') || rawDate.startsWith('115.')) {
-          // 把 115 替換成西元 2026 丟進去比對！
+        // 完美兼容民國 115 年 (無論是 115-06-03 還是 115.06.03 這時都已經變成 115-06-03 了)
+        if (rawDate.startsWith('115-')) {
           compareDate = '2026' + rawDate.substring(3);
         }
-        // ─── 結束民國年轉換 ───────────────────────────
         
-        // 使用修正後的西元時間軸進行範圍過濾
+        // 使用完全對齊的西元橫線時間軸進行過濾
         if (dateFrom && compareDate < dateFrom) return;
         if (dateTo && compareDate > dateTo) return;
         
@@ -842,7 +837,7 @@ function runQuery(){
           if (!h.includes(keyword)) return; 
         }
         
-        // 顯示在畫面上時，維持您原本試算表的樣貌 (顯示民國或西元皆可)
+        // 畫面上保留您試算表原本美觀的格式
         results.push({ ...e, date: rawDate, acctLabel });
       });
     });
