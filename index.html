@@ -213,7 +213,35 @@ tr:hover td {
   padding: 2.5rem 1rem;
   color: var(--ink-soft);
   font-size: 13px;
-}   
+} 
+
+/* ─── 📱 手機版專屬：頂部分頁導覽列橫向滑動優化 ─── */
+
+/* 電腦版維持預設排列 */
+.tabs-bar.mobile-tabs-scroll {
+  display: flex;
+  flex-wrap: nowrap;
+}
+
+/* 當螢幕寬度小於 768px（手機版）時，自動啟動輸送帶模式 */
+@media screen and (max-width: 768px) {
+  .tabs-bar.mobile-tabs-scroll {
+    overflow-x: auto !important;       /* 允許左右橫向滾動 */
+    white-space: nowrap !important;     /* 強制所有分頁按鈕排成單行，絕不折行 */
+    -webkit-overflow-scrolling: touch; /* 讓 iPhone 滑起來有流暢的阻尼彈性 */
+    padding-bottom: 5px;               /* 留點微小空隙，防止按鈕被外框擠壓 */
+  }
+
+  /* 隱藏手機上醜醜的水平捲軸（滾動條），維持畫面清爽 */
+  .tabs-bar.mobile-tabs-scroll::-webkit-scrollbar {
+    display: none !important;
+  }
+  
+  /* 確保每個分頁按鈕在手機上都維持自己完整的寬度，不會被強行壓扁字體 */
+  .tabs-bar.mobile-tabs-scroll .tab-btn {
+    flex: 0 0 auto !important;
+  }
+}
   </style>
 </head>
 
@@ -248,7 +276,7 @@ tr:hover td {
   </div>
 </header>
 
-<nav class="tabs-bar">
+<nav class="tabs-bar mobile-tabs-scroll">
   <button class="tab-btn active" onclick="switchTab('query')" data-tab="query"><i class="ti ti-search" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>查詢</button>
   <button class="tab-btn" onclick="switchTab('lingyon')" data-tab="lingyon"><i class="ti ti-wallet" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>零用金（採購）</button>
   <button class="tab-btn" onclick="switchTab('nonghu')" data-tab="nonghu"><i class="ti ti-pig-money" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>農會儲簿</button>
@@ -280,7 +308,7 @@ tr:hover td {
               <option value="E">信徒借款（E）</option>
             </select>
           </div>
-          <div class="fg"><label>金額</label><input type="number" id="fx-amount" placeholder="0" min="0"/></div>
+          <div class="fg"><label>金額</label><input type="number" id="fx-amount" placeholder="0" min="0" inputmode="decimal" pattern="[0-9]*"/></div>
           <div class="fg"><label>備註</label><input type="text" id="fx-note" placeholder="陳文雄…"/></div>
           <div class="fg"><label>&nbsp;</label><button class="btn primary" id="fx-add-btn" onclick="addFixed()"><i class="ti ti-plus"></i>新增</button></div>
         </div>
