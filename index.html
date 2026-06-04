@@ -409,6 +409,8 @@ const TYPE_MAP  = { income:'收入', expense:'支出', prev:'上期結存' };
 const TYPE_MAP_R = { '收入':'income','支出':'expense','上期結存':'prev' };
 
 let db = { nonghu:[], taiqiye:[], lingyon:[], jijin:[], fixed:[] };
+// 💡 全域追加：用來記錄各個分頁在當前瀏覽器視窗中「剛剛新增」的項目，剛進去時是空的
+let currentAddedEntries = { nonghu: [], taiqiye: [], lingyon: [], jijin: [] };
 
 // ── 民國日期工具（使用原生日曆） ─────────────────────────
 // 西元 → 民國：yyyy.mm.dd
@@ -512,10 +514,19 @@ async function addEntry(acct){
     const entry={date,subj,note,type,amount};
     const res=await gsReq({action:'add', date, subj, note:note||'', type:TYPE_MAP[type]||type, amount:String(amount), acct:ACCT_META[acct].label});
     if(res.error) throw new Error(res.error);
+    
     entry.id=String(res.id);
+    
+    // 同步塞入全域歷史大倉庫
     db[acct].push(entry);
     sortEntries(db[acct]);
+    
+    // 💡【核心同步】同時推進當下新增的清單，讓它在下方顯示出來
+    if(!currentAddedEntries[acct]) currentAddedEntries[acct] = [];
+    currentAddedEntries[acct].push(entry);
+    
     renderAcct(acct);
+    
     document.getElementById(acct+'-subj').value='';
     document.getElementById(acct+'-note').value='';
     document.getElementById(acct+'-amount').value='';
@@ -535,6 +546,89 @@ async function removeEntry(acct,id){
   } catch(e){ alert('刪除失敗：'+e.message); }
 }
 
+  // ─── 💡【全新追加：行內編輯啟動器】 ───
+function editRowInline(acct, id, btn) {
+  const tr = document.getElementById(`row-${acct}-${id}`);
+  if (!tr || tr.classList.contains('is-editing')) return;
+  
+  tr.classList.add('is-editing');
+  
+  // 抓出原本這一列在暫存裡的原始資料
+  const item = currentAddedEntries[acct].find(e => e.id === id);
+  if (!item) return;
+
+  // 取得各個儲存格欄位
+  const dateTd = tr.querySelector('.cell-date');
+  const subjTd = tr.querySelector('.cell-subj');
+  const noteTd = tr.querySelector('.cell-note');
+  const actionTd = btn.parentElement;
+
+  // 將表格內容轉換為互動式 Input 輸入框
+  dateTd.innerHTML = `<input type="text" class="edit-input-date" value="${item.date}" style="width:90px; padding:2px;">`;
+  subjTd.innerHTML = `<input type="text" class="edit-input-subj" value="${item.subj}" style="width:100px; padding:2px;">`;
+  noteTd.innerHTML = `<input type="text" class="edit-input-note" value="${item.note}" style="width:120px; padding:2px;">`;
+
+  // 按鈕變身為 儲存 與 取消
+  actionTd.innerHTML = `
+    <button class="btn success" style="padding:4px 8px; font-size:12px; background-color:#28a745; color:white; margin-right:4px;" onclick="saveRowInline('${acct}','${id}',this)"><i class="ti ti-check"></i> 儲存</button>
+    <button class="btn" style="padding:4px 8px; font-size:12px; background-color:#6c757d; color:white;" onclick="renderAcct('${acct}')"><i class="ti ti-x"></i> 取消</button>
+  `;
+}
+
+// ─── 💡【全新追加：行內編輯雲端儲存】 ───
+async function saveRowInline(acct, id, btn) {
+  const tr = document.getElementById(`row-${acct}-${id}`);
+  if (!tr) return;
+
+  const newDate = tr.querySelector('.edit-input-date').value.trim();
+  const newSubj = tr.querySelector('.edit-input-subj').value.trim();
+  const newNote = tr.querySelector('.edit-input-note').value.trim();
+
+  if(!newDate || !newSubj) { alert('日期與科目不能留空！'); return; }
+
+  btn.disabled = true; btn.innerHTML = '…';
+  setStatus('loading', '雲端修改中...');
+
+  try {
+    // 撈出暫存裡的原始物件來獲取不變的金額與類型
+    const oldItem = currentAddedEntries[acct].find(e => e.id === id);
+    
+    // 呼叫您的後端 GAS，將修改後的參數丟過去
+    // 💡 這裡將 action 設為 'edit' (請確保您的後端 GAS 有支援修改或共用 add 覆寫邏輯，通常是傳入 id 去修改對應行)
+    const res = await gsReq({
+      action: 'edit', 
+      id: String(id),
+      date: newDate, 
+      subj: newSubj, 
+      note: newNote, 
+      type: TYPE_MAP[oldItem.type] || oldItem.type, 
+      amount: String(oldItem.amount), 
+      acct: ACCT_META[acct].label
+    });
+    
+    if(res.error) throw new Error(res.error);
+
+    // 成功後，同步更新前端 db 大資料庫 與 currentAddedEntries 暫存陣列
+    [db[acct], currentAddedEntries[acct]].forEach(list => {
+      const target = list.find(e => e.id === id);
+      if (target) {
+        target.date = newDate;
+        target.subj = newSubj;
+        target.note = newNote;
+      }
+    });
+
+    // 重新排序並刷新畫面
+    sortEntries(db[acct]);
+    renderAcct(acct);
+    setStatus('ok', '修改成功');
+  } catch(e) {
+    alert('修改失敗：' + e.message);
+    setStatus('err', '修改失敗');
+    renderAcct(acct); // 失敗了就刷回原狀
+  }
+}
+  
 // ── Fixed (localStorage) ──────────────────────────────────
 function addFixed(){
   const month=document.getElementById('fx-month').value.trim();
@@ -635,40 +729,68 @@ function updateFilter(acct){
 }
 function renderAcct(acct){
   updateFilter(acct);
-  const fm=document.getElementById(acct+'-filter').value;
+  
+  // 💡 計算上方四大统计卡片時，依然使用 db[acct] 全域大倉庫，確保結存金額 100% 正確
   const entries=db[acct];
   let running=0;
-  const allRows=entries.map(e=>{
+  entries.forEach(e=>{
     if(e.type==='prev') running=e.amount;
     else if(e.type==='income') running+=e.amount;
     else running-=e.amount;
-    return {...e,running};
   });
   const prevBal=entries.filter(e=>e.type==='prev').reduce((s,e)=>s+e.amount,0);
   const totalIn=entries.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
   const totalOut=entries.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  
   document.getElementById(acct+'-stats').innerHTML=`
     <div class="sum-card"><div class="sum-label"><i class="ti ti-arrow-bar-to-up"></i>上期結存</div><div class="sum-value b">${fmtMoney(prevBal)}</div></div>
     <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>本期收入</div><div class="sum-value g">${fmtMoney(totalIn)}</div></div>
     <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>本期支出</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
     <div class="sum-card hl"><div class="sum-label"><i class="ti ti-wallet"></i>本期結存</div><div class="sum-value">${fmtMoney(running)}</div></div>`;
-  const displayRows=fm?allRows.filter(r=>(r.date||'').startsWith(fm)):allRows;
+
+  // ─── 💡【最核心改變】下方明細表格「只渲染剛剛新增的項目」 ───
+  const displayRows = currentAddedEntries[acct] || [];
   const tbody=document.getElementById(acct+'-tbody');
+  
   if(displayRows.length===0){
-    tbody.innerHTML=`<tr><td colspan="7"><div class="empty-state"><i class="ti ti-inbox"></i><p>尚無資料，請新增明細</p></div></td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="7"><div class="empty-state"><i class="ti ti-inbox"></i><p>當前尚無新增資料，請於上方填寫明細</p></div></td></tr>`;
     return;
   }
+  
+  // 取得當前使用者角色
+  const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
+
   tbody.innerHTML=displayRows.map(r=>{
     const isPrev=r.type==='prev', isIn=r.type==='income';
     const inc=isPrev?`<span class="mu" style="font-size:12px">結存</span>`:isIn?`<span class="ni">${fmtMoney(r.amount)}</span>`:'<span class="mu">—</span>';
     const exp=(!isPrev&&!isIn)?`<span class="no">${fmtMoney(r.amount)}</span>`:'<span class="mu">—</span>';
-    return `<tr class="${isPrev?'pr':'dr'}">
-      <td>${r.date}</td>
-      <td>${r.subj||''}</td>
-      <td class="mu">${r.note||'—'}</td>
-      <td>${inc}</td><td>${exp}</td>
-      <td><span class="${r.running>=0?'np':'nn'}">${fmtMoney(r.running)}</span></td>
-      <td><button class="btn danger" onclick="removeEntry('${acct}','${r.id}')"><i class="ti ti-trash"></i></button></td>
+    
+    // 💡 權限控管按鈕結構
+    let actionButtons = '';
+    if (role === '管理員') {
+      // 管理員：擁有「編輯」與「刪除」
+      actionButtons = `
+        <button class="btn primary" style="padding:4px 8px; font-size:12px; margin-right:4px;" onclick="editRowInline('${acct}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>
+        <button class="btn danger" style="padding:4px 8px; font-size:12px;" onclick="removeEntry('${acct}','${r.id}')"><i class="ti ti-trash"></i> 刪除</button>
+      `;
+    } else if (role === '會計') {
+      // 會計：只有「編輯」，不能刪除
+      actionButtons = `
+        <button class="btn primary" style="padding:4px 8px; font-size:12px;" onclick="editRowInline('${acct}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>
+      `;
+    } else {
+      // 一般人：啥按鈕都沒有
+      actionButtons = `<span class="mu">無權限</span>`;
+    }
+
+    return `<tr class="${isPrev?'pr':'dr'}" id="row-${acct}-${r.id}">
+      <td class="cell-date">${r.date}</td>
+      <td class="cell-subj">${r.subj||''}</td>
+      <td class="cell-note mu">${r.note||'—'}</td>
+      <td class="cell-inc">${inc}</td>
+      <td class="cell-exp">${exp}</td>
+      <td><span class="mu">現行確認</span></td>
+      <td style="white-space: nowrap;">${actionButtons}</td>
     </tr>`;
   }).join('');
 }
