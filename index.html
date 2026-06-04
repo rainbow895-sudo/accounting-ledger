@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>北極殿帳務管理系統</title>
+  <title>九肉北極殿帳務管理系統</title>
   
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -357,11 +357,12 @@ tr:hover td {
       <div class="table-wrap">
         <table><thead><tr>
           <th style="width:85px">日期</th>
-          <th style="width:90px">帳戶</th>
-          <th style="width:110px">科目／商家</th>
-          <th>摘要</th>
-          <th style="width:75px">類型</th>
-          <th style="width:105px">金額</th>
+        <th style="width:90px">帳戶</th>
+        <th style="width:110px">科目／商家</th>
+        <th>摘要</th>
+        <th style="width:75px">類型</th>
+        <th style="width:105px">金額</th>
+        <th style="width:80px; text-align: center;">操作</th> 
         </tr></thead>
         <tbody id="query-tbody"><tr><td colspan="6"><div class="empty-state"><i class="ti ti-search"></i><p>請設定條件後點「查詢」</p></div></td></tr></tbody>
         </table>
@@ -948,7 +949,7 @@ function runQuery(){
         if (acctFilter && acctLabel !== acctFilter) return;
         if (typeFilter && TYPE_MAP[e.type] !== typeFilter) return;
         
-        // 💡【核心大修正】將斜線 / 和 點點 . 通通轉換成橫線 -，消滅 ASCII 編碼打架問題！
+        // 將斜線 / 和 點點 . 通通轉換成橫線 -
         let rawDate = String(e.date || '').trim().replace(/[\/\.]/g, '-');
         if (rawDate.includes('T')) {
           rawDate = rawDate.split('T')[0];
@@ -958,7 +959,7 @@ function runQuery(){
         
         let compareDate = rawDate; 
         
-        // 完美兼容民國 115 年 (無論是 115-06-03 還是 115.06.03 這時都已經變成 115-06-03 了)
+        // 完美兼容民國 115 年
         if (rawDate.startsWith('115-')) {
           compareDate = '2026' + rawDate.substring(3);
         }
@@ -972,8 +973,8 @@ function runQuery(){
           if (!h.includes(keyword)) return; 
         }
         
-        // 畫面上保留您試算表原本美觀的格式
-        results.push({ ...e, date: rawDate, acctLabel });
+        // 💡 這裡把物件的 acct 英文代碼（如 lingyon）順便傳下去，等一下編輯按鈕需要用到
+        results.push({ ...e, date: rawDate, acctLabel, acctKey: acct });
       });
     });
   }
@@ -1001,17 +1002,36 @@ function runQuery(){
   const tbody = document.getElementById('query-tbody');
   if (tbody) {
     if (results.length === 0) { 
-      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="ti ti-search"></i><p>查無符合資料</p></div></td></tr>`; 
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="ti ti-search"></i><p>查無符合資料</p></div></td></tr>`; 
       return; 
     }
+    
+    // 💡 取得當前登入使用者的職稱權限
+    const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
+
     const typeTag = t => t === 'income' ? '<span class="tag in">收入</span>' : t === 'expense' ? '<span class="tag out">支出</span>' : '<span class="tag prev">結存</span>';
-    tbody.innerHTML = results.map(r => `
-      <tr class="dr">
-        <td>${r.date}</td><td class="mu">${r.acctLabel}</td>
-        <td>${r.subj || ''}</td><td class="mu">${r.note || '—'}</td>
-        <td>${typeTag(r.type)}</td>
-        <td><span class="${r.type === 'income' ? 'ni' : r.type === 'expense' ? 'no' : 'mu'}">${fmtMoney(r.amount)}</span></td>
-      </tr>`).join('');
+    
+    tbody.innerHTML = results.map(r => {
+      // 💡 根據權限判斷是否要餵給管理員與會計「編輯」按鈕
+      let actionButtons = '';
+      if (role === '管理員' || role === '會計') {
+        actionButtons = `<button class="btn primary" style="padding:4px 8px; font-size:12px;" onclick="editRowInlineQuery('${r.acctKey}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>`;
+      } else {
+        actionButtons = `<span class="mu">—</span>`;
+      }
+
+      // 💡 幫 <tr> 加上動態 ID (qrow-帳戶-明細ID)，並幫各個要編輯的欄位加上專屬 class
+      return `
+        <tr class="dr" id="qrow-${r.acctKey}-${r.id}">
+          <td class="qcell-date">${r.date}</td>
+          <td class="mu">${r.acctLabel}</td>
+          <td class="qcell-subj">${r.subj || ''}</td>
+          <td class="qcell-note mu">${r.note || '—'}</td>
+          <td>${typeTag(r.type)}</td>
+          <td class="qcell-amount" style="text-align: right;"><span class="${r.type === 'income' ? 'ni' : r.type === 'expense' ? 'no' : 'mu'}">${fmtMoney(r.amount)}</span></td>
+          <td style="white-space: nowrap; text-align: center;">${actionButtons}</td>
+        </tr>`;
+    }).join('');
   }
 }
 
@@ -1320,6 +1340,91 @@ function switchTab(name) {
   else if (name === 'fixed') renderFixed();
 }
 
+  // ─── 💡【全新追加：查詢分頁行內編輯啟動】 ───
+function editRowInlineQuery(acctKey, id, btn) {
+  const tr = document.getElementById(`qrow-${acctKey}-${id}`);
+  if (!tr || tr.classList.contains('is-editing')) return;
+  
+  tr.classList.add('is-editing');
+  
+  // 從 db 全域大倉庫撈出歷史原始資料
+  const item = db[acctKey].find(e => e.id === id);
+  if (!item) return;
+
+  const dateTd = tr.querySelector('.qcell-date');
+  const subjTd = tr.querySelector('.qcell-subj');
+  const noteTd = tr.querySelector('.qcell-note');
+  const amountTd = tr.querySelector('.qcell-amount');
+  const actionTd = btn.parentElement;
+
+  // 歷史資料所有欄位解鎖變輸入框
+  dateTd.innerHTML = `<input type="text" class="qedit-input-date" value="${item.date}" style="width:85px; padding:2px;">`;
+  subjTd.innerHTML = `<input type="text" class="qedit-input-subj" value="${item.subj}" style="width:100px; padding:2px;">`;
+  noteTd.innerHTML = `<input type="text" class="qedit-input-note" value="${item.note}" style="width:120px; padding:2px;">`;
+  amountTd.innerHTML = `<input type="number" class="qedit-input-amount" value="${item.amount}" style="width:80px; padding:2px; text-align:right;">`;
+
+  actionTd.innerHTML = `
+    <button class="btn success" style="padding:4px 8px; font-size:12px; background-color:#28a745; color:white; margin-right:4px;" onclick="saveRowInlineQuery('${acctKey}','${id}',this)"><i class="ti ti-check"></i> 儲存</button>
+    <button class="btn" style="padding:4px 8px; font-size:12px; background-color:#6c757d; color:white;" onclick="if(typeof runQuery === 'function') runQuery();"><i class="ti ti-x"></i> 取消</button>
+  `;
+}
+
+// ─── 💡【全新追加：查詢分頁同步雲端儲存】 ───
+async function saveRowInlineQuery(acctKey, id, btn) {
+  const tr = document.getElementById(`qrow-${acctKey}-${id}`);
+  if (!tr) return;
+
+  const newDate = tr.querySelector('.qedit-input-date').value.trim();
+  const newSubj = tr.querySelector('.qedit-input-subj').value.trim();
+  const newNote = tr.querySelector('.qedit-input-note').value.trim();
+  const newAmount = parseFloat(tr.querySelector('.qedit-input-amount').value);
+
+  if(!newDate || !newSubj) { alert('日期與科目不能留空！'); return; }
+  if(isNaN(newAmount) || newAmount < 0) { alert('請輸入正確的金額！'); return; }
+
+  btn.disabled = true; btn.innerHTML = '…';
+  setStatus('loading', '雲端歷史資料修改中...');
+
+  try {
+    const oldItem = db[acctKey].find(e => e.id === id);
+    if (!oldItem) throw new Error("找不到原始資料");
+
+    // 直接發送 edit 指令給我們最新的後端 GAS，原地修改
+    const res = await gsReq({
+      action: 'edit', 
+      id: String(id),
+      date: newDate, 
+      subj: newSubj, 
+      note: newNote || '', 
+      type: TYPE_MAP[oldItem.type] || oldItem.type, 
+      amount: String(newAmount), 
+      acct: ACCT_META[acctKey].label
+    });
+    
+    if(res.error) throw new Error(res.error);
+
+    // 成功後，更新前端 db 大資料庫中的歷史資料
+    if (oldItem) {
+      oldItem.date = newDate;
+      oldItem.subj = newSubj;
+      oldItem.note = newNote;
+      oldItem.amount = newAmount;
+    }
+    
+    // 重新排序大倉庫
+    sortEntries(db[acctKey]);
+
+    // 💡 關鍵：重新觸發一次查詢，讓畫面上的表格和統計數字即時刷新！
+    if (typeof runQuery === 'function') runQuery();
+    
+    setStatus('ok', '歷史資料修改成功！');
+  } catch(e) {
+    alert('歷史修改失敗：' + e.message);
+    setStatus('err', '修改失敗');
+    if (typeof runQuery === 'function') runQuery();
+  }
+}
+  
 // ─── 修正：網頁初始化守衛 (解決網頁重新整理資料遺失的問題) ──────────────
 window.onload = async function() {
   const isAuthed = sessionStorage.getItem('beiji_logged_in');
