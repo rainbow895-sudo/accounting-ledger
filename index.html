@@ -223,23 +223,67 @@ tr:hover td {
   flex-wrap: nowrap;
 }
 
-/* 當螢幕寬度小於 768px（手機版）時，自動啟動輸送帶模式 */
+/* ─── 📱 全分頁通用版：只要進入「行內編輯」，手機版一律變身直向卡片 ─── */
 @media screen and (max-width: 768px) {
-  .tabs-bar.mobile-tabs-scroll {
-    overflow-x: auto !important;       /* 允許左右橫向滾動 */
-    white-space: nowrap !important;     /* 強制所有分頁按鈕排成單行，絕不折行 */
-    -webkit-overflow-scrolling: touch; /* 讓 iPhone 滑起來有流暢的阻尼彈性 */
-    padding-bottom: 5px;               /* 留點微小空隙，防止按鈕被外框擠壓 */
-  }
-
-  /* 隱藏手機上醜醜的水平捲軸（滾動條），維持畫面清爽 */
-  .tabs-bar.mobile-tabs-scroll::-webkit-scrollbar {
-    display: none !important;
+  
+  /* 1. 全站任何表格列只要進入 is-editing 狀態，一律變身獨立立體卡片 */
+  tr.is-editing {
+    display: flex !important;
+    flex-direction: column !important;
+    background: #fffdf3 !important;      
+    padding: 12px !important;
+    margin: 10px 0 !important;
+    border: 2px solid #ffeb99 !important; 
+    border-radius: 8px !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05) !important;
   }
   
-  /* 確保每個分頁按鈕在手機上都維持自己完整的寬度，不會被強行壓扁字體 */
-  .tabs-bar.mobile-tabs-scroll .tab-btn {
-    flex: 0 0 auto !important;
+  /* 2. 把 td 轉成上下直向排列 */
+  tr.is-editing td {
+    display: flex !important;
+    align-items: center !important;
+    border: none !important;             
+    padding: 6px 0 !important;
+    width: 100% !important;
+    text-align: left !important;
+  }
+  
+  /* 3. 在輸入框左邊塞入漂亮的中文欄位提示 */
+  tr.is-editing td::before {
+    width: 85px !important;
+    font-weight: bold !important;
+    color: #555 !important;
+    font-size: 13px !important;
+    flex-shrink: 0 !important;
+  }
+  
+  /* 💡 這裡同時相容「查詢分頁(qcell)」與「一般記帳分頁(cell)」的 class 名稱 */
+  tr.is-editing td.cell-date::before, tr.is-editing td.qcell-date::before     { content: "📅 修改日期：" !important; }
+  tr.is-editing td.mu:nth-child(2)::before                                    { content: "🏦 帳戶分頁：" !important; }
+  tr.is-editing td.cell-subj::before, tr.is-editing td.qcell-subj::before     { content: "🏷️ 科目商家：" !important; }
+  tr.is-editing td.cell-note::before, tr.is-editing td.qcell-note::before     { content: "📝 摘要備註：" !important; }
+  tr.is-editing td:nth-child(5)::before                                       { content: "📊 類型狀態：" !important; }
+  tr.is-editing td.cell-inc::before, tr.is-editing td.cell-exp::before, 
+  tr.is-editing td.qcell-amount::before                                       { content: "💰 修改金額：" !important; }
+  tr.is-editing td:last-child::before                                         { content: "⚙️ 執行操作：" !important; }
+
+  /* 4. 讓手機版的輸入框撐滿，手指極度好點 */
+  tr.is-editing input {
+    flex: 1 !important;
+    width: 100% !important;
+    height: 36px !important;
+    font-size: 16px !important;          
+    border: 1px solid #ccc !important;
+    border-radius: 4px !important;
+    padding: 0 8px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 5. 讓操作按鈕在手機上放大 */
+  tr.is-editing .btn {
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+    min-width: 70px !important;
   }
 }
   </style>
