@@ -293,33 +293,7 @@ tr:hover td {
     font-size: 12px !important;
   }
 }
-/* ─── 💻 電腦版：所有查詢條件排成完美的一整行 ─── */
-.search-bar {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  flex-wrap: nowrap !important; /* 強制電腦版絕對不准換行 */
-  gap: 10px !important;         /* 每個元件之間拉開舒服的間距 */
-  width: 100% !important;
-}
-
-/* 下拉選單與日期外殼的基本設定 */
-.search-bar select {
-  height: 36px !important;
-  min-width: 110px !important;
-}
-
-.mobile-date-range-row {
-  display: flex !important;
-  gap: 8px !important;
-  align-items: center !important;
-}
-
-.mobile-date-range-row .date-item input {
-  width: 140px !important; /* 限制電腦版日期輸入框寬度，防變胖 */
-}
-
-/* ─── 💻 電腦版：下方四個欄位完美拉直鋪滿 ─── */
+/* ─── 💻 電腦版基本外觀 ─── */
 .search-bar {
   display: flex !important;
   flex-direction: row !important;
@@ -338,13 +312,14 @@ tr:hover td {
   display: flex !important;
   gap: 8px !important;
   align-items: center !important;
+  flex-shrink: 0 !important;
 }
 
 .mobile-date-range-row .date-item input {
   width: 140px !important; 
 }
 
-/* 關鍵字搜尋欄：按鈕移回頂部後，它可以擁有絕佳的橫向拉伸自由度 */
+/* 讓輸入框自動吃掉剩下寬度，不擠壓卡片 */
 .search-bar .search-keyword {
   flex: 1 !important;        
   min-width: 200px !important;
@@ -352,11 +327,6 @@ tr:hover td {
 
 /* ─── 📱 手機版專屬 RWD 響應式排版 ─── */
 @media screen and (max-width: 768px) {
-  /* 讓標題與按鈕在手機上依舊保持精緻並排 */
-  .panel-hdr {
-    padding: 8px 12px !important;
-  }
-
   .search-bar {
     display: flex !important;
     flex-wrap: wrap !important;
@@ -483,6 +453,9 @@ tr:hover td {
 <div id="tab-query" class="tab-pane" style="display:none">
   <div class="panel">
     
+   <div id="tab-query" class="tab-pane" style="display:none">
+  <div class="panel">
+    
     <div class="panel-hdr" style="display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
       <span class="panel-title" style="margin: 0; display: flex; align-items: center; gap: 4px;">
         <i class="ti ti-search"></i>查詢明細
@@ -493,7 +466,8 @@ tr:hover td {
     </div>
 
     <div class="panel-body">
-      <div class="search-bar">
+      
+      <div class="search-bar" style="margin-bottom: 16px;">
         
         <select id="q-acct">
           <option value="">全部帳戶</option>
@@ -535,9 +509,8 @@ tr:hover td {
                       background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
                       outline:none; box-sizing: border-box;" />
 
-      </div>
+      </div> <div id="query-stats" style="display:none" class="summary-row"></div>
       
-      <div id="query-stats" style="display:none" class="summary-row"></div>
     </div>
   </div>
 </div>
