@@ -293,7 +293,7 @@ tr:hover td {
     font-size: 12px !important;
   }
 }
-/* ─── 💻 電腦版：下方四個篩選欄位完美拉直鋪滿 ─── */
+/* ─── 💻 電腦版：所有查詢條件與按鈕排成完美單行 ─── */
 .search-bar {
   display: flex !important;
   flex-direction: row !important;
@@ -301,7 +301,6 @@ tr:hover td {
   flex-wrap: nowrap !important;
   gap: 10px !important;
   width: 100% !important;
-  margin-bottom: 16px !important; 
 }
 
 .search-bar select {
@@ -313,33 +312,25 @@ tr:hover td {
   display: flex !important;
   gap: 8px !important;
   align-items: center !important;
-  flex-shrink: 0 !important;
 }
 
 .mobile-date-range-row .date-item input {
   width: 140px !important; 
 }
 
-/* 關鍵字搜尋欄：自由伸展吃掉剩餘寬度 */
 .search-bar .search-keyword {
-  flex: 1 !important;        
-  min-width: 200px !important;
+  flex: 1 !important;        /* 彈性放大，吃掉中間剩餘空間 */
+  min-width: 180px !important;
+  max-width: 400px !important;
 }
 
-/* ─── 📊 統計卡片基本樣式優化（💡 移除 !important 的 display，不干擾 JS 顯示隱藏） ─── */
-#query-stats {
-  width: 100% !important;
-  margin-top: 15px !important;
-  margin-bottom: 15px !important;
+/* 確保查詢按鈕在電腦版不會被擠扁，維持尊貴的金色身形 */
+.search-bar .search-btn {
+  flex-shrink: 0 !important; 
+  white-space: nowrap !important;
 }
 
-/* 確保當 JS 讓它顯示時，裡面的卡片能漂亮地並排與平分 */
-#query-stats.summary-row, 
-.summary-row {
-  gap: 15px !important;
-}
-
-/* ─── 📱 手機版專屬 RWD 響應式排版 ─── */
+/* ─── 📱 手機版專屬：完美對稱與換行 ─── */
 @media screen and (max-width: 768px) {
   .search-bar {
     display: flex !important;
@@ -364,9 +355,13 @@ tr:hover td {
     width: 100% !important;
   }
 
-  .search-bar .search-keyword {
+  /* 關鍵字輸入框與查詢按鈕，在手機上各自強迫獨立佔滿一整行，方便手指點擊 */
+  .search-bar .search-keyword,
+  .search-bar .search-btn {
     width: 100% !important;
+    max-width: none !important;
     flex: none !important;
+    height: 40px !important; /* 手機版按鈕加高到 40px，比較好按 */
   }
 }
   </style>
