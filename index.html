@@ -293,31 +293,26 @@ tr:hover td {
     font-size: 12px !important;
   }
 }
-    /* ─── 💻 電腦版預設：精準限制「只有日期輸入框」的寬度，放過下拉選單 ─── */
+ /* 電腦版：讓所有元件維持自然寬度 */
 .mobile-date-range-row {
-  display: inline-flex !important; 
-  width: auto !important;
+  width: auto !important; /* 電腦版不要強迫 100% */
+}
+.date-item input[type="date"] {
+  width: 140px !important; /* 固定日期框寬度 */
 }
 
-/* 💡 關鍵修正：加上 [type="date"]，確保只有日曆輸入框會變 150px，下拉選單維持原樣 */
-.mobile-date-range-row .date-item input[type="date"] {
-  width: 150px !important;         
-}
-
-/* ─── 📱 手機版專屬：小螢幕才啟動撐滿對齊 ─── */
+/* 手機版：啟動全寬度模式 */
 @media screen and (max-width: 768px) {
+  .search-bar {
+    flex-direction: column; /* 手機版改為垂直堆疊 */
+    align-items: stretch !important;
+  }
   .mobile-date-range-row {
-    display: flex !important;       
     width: 100% !important;
+    margin-top: 5px;
   }
-  
-  .mobile-date-range-row .date-item {
-    flex: 1 !important;             
-  }
-  
-  /* 手機版也一樣只針對日期輸入框拉滿 */
-  .mobile-date-range-row .date-item input[type="date"] {
-    width: 100% !important;         
+  .date-item {
+    flex: 1; /* 手機版平分 */
   }
 }
   </style>
@@ -421,42 +416,43 @@ tr:hover td {
         <button class="btn primary" onclick="runQuery()"><i class="ti ti-search"></i>查詢</button>
       </div>
       <div class="panel-body">
-        <div class="search-bar">
-          <select id="q-acct">
-            <option value="">全部帳戶</option>
-            <option value="農會儲簿">農會儲簿</option>
-            <option value="台企儲簿">台企儲簿</option>
-            <option value="零用金（採購）">零用金（採購）</option>
-            <option value="基金會">基金會</option>
-          </select>
-          <select id="q-type">
-            <option value="">全部類型</option>
-            <option value="收入">收入</option>
-            <option value="支出">支出</option>
-            <option value="上期結存">上期結存</option>
-          </select>
-          <div class="mobile-date-range-row" style="display: flex; gap: 8px; width: 100%; box-sizing: border-box; margin-bottom: 8px;">
+  <div class="search-bar" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+    
+    <!-- 1. 下拉選單：給予固定高度與寬度，確保不變形 -->
+    <select id="q-acct" style="height: 36px; min-width: 120px; border: 1px solid var(--paper-dark); border-radius: var(--radius);">
+      <option value="">全部帳戶</option>
+      <option value="農會儲簿">農會儲簿</option>
+      <option value="台企儲簿">台企儲簿</option>
+      <option value="零用金（採購）">零用金（採購）</option>
+      <option value="基金會">基金會</option>
+    </select>
 
-  <div class="mobile-date-range-row" style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+    <select id="q-type" style="height: 36px; min-width: 100px; border: 1px solid var(--paper-dark); border-radius: var(--radius);">
+      <option value="">全部類型</option>
+      <option value="收入">收入</option>
+      <option value="支出">支出</option>
+      <option value="上期結存">上期結存</option>
+    </select>
 
-  <div class="date-item" style="display: flex; align-items: center; gap: 4px;">
-    <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap;">起始</label>
-    <input type="date" id="q-date-from"
-           style="height:36px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
-                  background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
-                  outline:none; cursor:pointer; box-sizing: border-box;"
-           onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
+    <!-- 2. 日期區塊：移除 width: 100%，改用 CSS 控制 -->
+    <div class="mobile-date-range-row" style="display: flex; align-items: center; gap: 8px;">
+      <div class="date-item" style="display: flex; align-items: center; gap: 4px;">
+        <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap;">起始</label>
+        <input type="date" id="q-date-from"
+               style="height:36px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
+                      background:var(--paper); color:var(--ink); font-size:13px; outline:none; cursor:pointer;">
+      </div>
+
+      <div class="date-item" style="display: flex; align-items: center; gap: 4px;">
+        <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap;">結束</label>
+        <input type="date" id="q-date-to"
+               style="height:36px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
+                      background:var(--paper); color:var(--ink); font-size:13px; outline:none; cursor:pointer;">
+      </div>
+    </div>
+
   </div>
-
-  <div class="date-item" style="display: flex; align-items: center; gap: 4px;">
-    <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap;">結束</label>
-    <input type="date" id="q-date-to"
-           style="height:36px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
-                  background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
-                  outline:none; cursor:pointer; box-sizing: border-box;"
-           onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
-  </div>
-
+</div>
 </div>
 
 </div>
