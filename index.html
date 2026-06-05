@@ -293,28 +293,31 @@ tr:hover td {
     font-size: 12px !important;
   }
 }
-    /* ─── 💻 電腦版預設：限制日期輸入框不要長得太誇張 ─── */
+    /* ─── 💻 電腦版預設：精準限制「只有日期輸入框」的寬度，放過下拉選單 ─── */
 .mobile-date-range-row {
-  display: inline-flex !important; /* 電腦版改為行內彈性，不霸佔一整行 */
+  display: inline-flex !important; 
   width: auto !important;
 }
-.mobile-date-range-row .date-item input {
-  width: 150px !important;         /* 💡 電腦版給它一個最剛好、舒適的固定寬度 */
+
+/* 💡 關鍵修正：加上 [type="date"]，確保只有日曆輸入框會變 150px，下拉選單維持原樣 */
+.mobile-date-range-row .date-item input[type="date"] {
+  width: 150px !important;         
 }
 
 /* ─── 📱 手機版專屬：小螢幕才啟動撐滿對齊 ─── */
 @media screen and (max-width: 768px) {
   .mobile-date-range-row {
-    display: flex !important;       /* 手機版恢復整行鋪滿 */
+    display: flex !important;       
     width: 100% !important;
   }
   
   .mobile-date-range-row .date-item {
-    flex: 1 !important;             /* 手機版兩個區塊平分寬度 */
+    flex: 1 !important;             
   }
   
-  .mobile-date-range-row .date-item input {
-    width: 100% !important;         /* 手機版輸入框跟著拉滿 */
+  /* 手機版也一樣只針對日期輸入框拉滿 */
+  .mobile-date-range-row .date-item input[type="date"] {
+    width: 100% !important;         
   }
 }
   </style>
@@ -778,10 +781,10 @@ function buildAcctTab(acct){
     <div class="panel">
       <div class="panel-hdr">
         <span class="panel-title"><i class="ti ti-plus"></i>新增明細</span>
-        <div class="mbar">
-          <button class="btn" style="height:30px;font-size:12px" onclick="loadFromGS()=>{ ACCT_KEYS.forEach(a=>{updateFilter(a);renderAcct(a);}); })"><i class="ti ti-refresh"></i>重新整理</button>
-          <select id="${acct}-filter" onchange="renderAcct('${acct}')"><option value="">全部月份</option></select>
-        </div>
+       // <div class="mbar">
+       //   <button class="btn" style="height:30px;font-size:12px" onclick="loadFromGS()=>{ ACCT_KEYS.forEach(a=>{updateFilter(a);renderAcct(a);}); })"><i class="ti ti-refresh"></i>重新整理</button>
+       //   <select id="${acct}-filter" onchange="renderAcct('${acct}')"><option value="">全部月份</option></select>
+       // </div>
       </div>
       <div class="panel-body">
         <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));">
