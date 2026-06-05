@@ -293,7 +293,7 @@ tr:hover td {
     font-size: 12px !important;
   }
 }
-/* ─── 💻 電腦版：下方四個篩選欄位完美拉直鋪滿 ─── */
+/* ─── 💻 電腦版：只針對「查詢明細分頁」的篩選欄位完美拉直鋪滿 ─── */
 .search-bar {
   display: flex !important;
   flex-direction: row !important;
@@ -326,20 +326,14 @@ tr:hover td {
   min-width: 200px !important;
 }
 
-/* ─── 📊 統計卡片專屬（完美兼容 JS 的 display = 'grid'） ─── */
+/* ─── 📊 統計卡片專屬：用唯一的 ID 精準控制，絕不波及其他分頁的卡片 ─── */
 #query-stats {
   width: 100% !important;
   margin-top: 15px !important;
   margin-bottom: 15px !important;
-  /* 💡 關鍵設定：當 JS 給予 grid 時，強制電腦版鋪滿並切成等寬的 3 欄 */
+  /* 💡 只對查詢分頁的 grid 生效，讓它出來時自動變 3 欄橫排 */
   grid-template-columns: repeat(3, 1fr) !important;
   gap: 15px !important;
-}
-
-/* 確保三張卡片裡面的文字跟背景漂亮 */
-.sum-card {
-  width: 100% !important;
-  box-sizing: border-box !important;
 }
 
 /* ─── 📱 手機版專屬 RWD 響應式排版 ─── */
@@ -372,7 +366,7 @@ tr:hover td {
     flex: none !important;
   }
 
-  /* 💡 手機版專屬：強制把 3 欄降回 1 欄，讓卡片變回垂直堆疊，好讀好按 */
+  /* 手機版：查詢分頁的卡片降回 1 欄垂直堆疊 */
   #query-stats {
     grid-template-columns: 1fr !important;
     gap: 10px !important;
