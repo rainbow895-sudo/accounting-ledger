@@ -293,6 +293,30 @@ tr:hover td {
     font-size: 12px !important;
   }
 }
+    /* ─── 💻 電腦版預設：限制日期輸入框不要長得太誇張 ─── */
+.mobile-date-range-row {
+  display: inline-flex !important; /* 電腦版改為行內彈性，不霸佔一整行 */
+  width: auto !important;
+}
+.mobile-date-range-row .date-item input {
+  width: 150px !important;         /* 💡 電腦版給它一個最剛好、舒適的固定寬度 */
+}
+
+/* ─── 📱 手機版專屬：小螢幕才啟動撐滿對齊 ─── */
+@media screen and (max-width: 768px) {
+  .mobile-date-range-row {
+    display: flex !important;       /* 手機版恢復整行鋪滿 */
+    width: 100% !important;
+  }
+  
+  .mobile-date-range-row .date-item {
+    flex: 1 !important;             /* 手機版兩個區塊平分寬度 */
+  }
+  
+  .mobile-date-range-row .date-item input {
+    width: 100% !important;         /* 手機版輸入框跟著拉滿 */
+  }
+}
   </style>
 </head>
 
@@ -410,23 +434,27 @@ tr:hover td {
           </select>
           <div class="mobile-date-range-row" style="display: flex; gap: 8px; width: 100%; box-sizing: border-box; margin-bottom: 8px;">
 
-  <div style="flex: 1; display: flex; align-items: center; gap: 4px;">
+  <div class="mobile-date-range-row" style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+
+  <div class="date-item" style="display: flex; align-items: center; gap: 4px;">
     <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap;">起始</label>
     <input type="date" id="q-date-from"
-           style="flex: 1; width: 100%; height:36px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
+           style="height:36px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
                   background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
                   outline:none; cursor:pointer; box-sizing: border-box;"
            onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
   </div>
 
-  <div style="flex: 1; display: flex; align-items: center; gap: 4px;">
+  <div class="date-item" style="display: flex; align-items: center; gap: 4px;">
     <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap;">結束</label>
     <input type="date" id="q-date-to"
-           style="flex: 1; width: 100%; height:36px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
+           style="height:36px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
                   background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
                   outline:none; cursor:pointer; box-sizing: border-box;"
            onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
   </div>
+
+</div>
 
 </div>
           <input type="text" id="q-keyword" placeholder="科目／商家 / 摘要關鍵字"/>
