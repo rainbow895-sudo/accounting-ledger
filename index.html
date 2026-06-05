@@ -293,7 +293,7 @@ tr:hover td {
     font-size: 12px !important;
   }
 }
-/* ─── 💻 電腦版：所有查詢條件與按鈕排成完美單行 ─── */
+/* ─── 💻 電腦版：下方四個篩選欄位完美拉直鋪滿 ─── */
 .search-bar {
   display: flex !important;
   flex-direction: row !important;
@@ -301,6 +301,7 @@ tr:hover td {
   flex-wrap: nowrap !important;
   gap: 10px !important;
   width: 100% !important;
+  margin-bottom: 16px !important; 
 }
 
 .search-bar select {
@@ -312,25 +313,36 @@ tr:hover td {
   display: flex !important;
   gap: 8px !important;
   align-items: center !important;
+  flex-shrink: 0 !important;
 }
 
 .mobile-date-range-row .date-item input {
   width: 140px !important; 
 }
 
+/* 關鍵字搜尋欄：自動吃掉剩下所有寬度 */
 .search-bar .search-keyword {
-  flex: 1 !important;        /* 彈性放大，吃掉中間剩餘空間 */
-  min-width: 180px !important;
-  max-width: 400px !important;
+  flex: 1 !important;        
+  min-width: 200px !important;
 }
 
-/* 確保查詢按鈕在電腦版不會被擠扁，維持尊貴的金色身形 */
-.search-bar .search-btn {
-  flex-shrink: 0 !important; 
-  white-space: nowrap !important;
+/* ─── 📊 統計卡片專屬（完美兼容 JS 的 display = 'grid'） ─── */
+#query-stats {
+  width: 100% !important;
+  margin-top: 15px !important;
+  margin-bottom: 15px !important;
+  /* 💡 關鍵設定：當 JS 給予 grid 時，強制電腦版鋪滿並切成等寬的 3 欄 */
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 15px !important;
 }
 
-/* ─── 📱 手機版專屬：完美對稱與換行 ─── */
+/* 確保三張卡片裡面的文字跟背景漂亮 */
+.sum-card {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* ─── 📱 手機版專屬 RWD 響應式排版 ─── */
 @media screen and (max-width: 768px) {
   .search-bar {
     display: flex !important;
@@ -355,13 +367,15 @@ tr:hover td {
     width: 100% !important;
   }
 
-  /* 關鍵字輸入框與查詢按鈕，在手機上各自強迫獨立佔滿一整行，方便手指點擊 */
-  .search-bar .search-keyword,
-  .search-bar .search-btn {
+  .search-bar .search-keyword {
     width: 100% !important;
-    max-width: none !important;
     flex: none !important;
-    height: 40px !important; /* 手機版按鈕加高到 40px，比較好按 */
+  }
+
+  /* 💡 手機版專屬：強制把 3 欄降回 1 欄，讓卡片變回垂直堆疊，好讀好按 */
+  #query-stats {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
   }
 }
   </style>
