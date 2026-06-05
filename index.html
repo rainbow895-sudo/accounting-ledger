@@ -489,7 +489,7 @@ tr:hover td {
       <span class="panel-title" style="margin: 0; display: flex; align-items: center; gap: 4px;">
         <i class="ti ti-search"></i>查詢明細
       </span>
-      <button class="btn primary" onclick="runQuery()">
+      <button class="btn primary" onclick="runQuery()" style="height: 34px; padding: 0 16px; display: flex; align-items: center; gap: 4px; white-space: nowrap; cursor: pointer;">
         <i class="ti ti-search"></i>查詢
       </button>
     </div>
@@ -538,7 +538,7 @@ tr:hover td {
                       background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
                       outline:none; box-sizing: border-box; vertical-align: middle; margin-bottom: 8px;" />
 
-      </div> <div id="query-stats" style="display:none; clear: both; width: 100%; margin-top: 20px; margin-bottom: 20px;"></div>
+      </div> <div id="query-stats" style="display:none; clear: both; width: 100%; margin-top: 20px; margin-bottom: 20px; grid-template-columns: repeat(3, 1fr); gap: 15px;"></div>
     </div>
   </div>
 </div>
