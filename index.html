@@ -319,28 +319,55 @@ tr:hover td {
   width: 140px !important; /* 限制電腦版日期輸入框寬度，防變胖 */
 }
 
-/* 讓移到後方的關鍵字搜尋欄在電腦版上變寬，看起來更大器 */
-.search-bar .search-keyword {
-  flex: 1 !important;        /* 💡 關鍵：自動吃掉電腦版右邊剩下的所有空間 */
-  min-width: 200px !important;
-  max-width: 400px !important; /* 限制最大寬度，避免拉得太誇張 */
+/* ─── 💻 電腦版：下方四個欄位完美拉直鋪滿 ─── */
+.search-bar {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 10px !important;
+  width: 100% !important;
 }
 
-/* ─── 📱 手機版專屬：自動切換為舒適的滿版堆疊 ─── */
+.search-bar select {
+  height: 36px !important;
+  min-width: 110px !important;
+}
+
+.mobile-date-range-row {
+  display: flex !important;
+  gap: 8px !important;
+  align-items: center !important;
+}
+
+.mobile-date-range-row .date-item input {
+  width: 140px !important; 
+}
+
+/* 關鍵字搜尋欄：按鈕移回頂部後，它可以擁有絕佳的橫向拉伸自由度 */
+.search-bar .search-keyword {
+  flex: 1 !important;        
+  min-width: 200px !important;
+}
+
+/* ─── 📱 手機版專屬 RWD 響應式排版 ─── */
 @media screen and (max-width: 768px) {
+  /* 讓標題與按鈕在手機上依舊保持精緻並排 */
+  .panel-hdr {
+    padding: 8px 12px !important;
+  }
+
   .search-bar {
     display: flex !important;
-    flex-wrap: wrap !important; /* 手機版寬度不夠時，允許自動換行 */
+    flex-wrap: wrap !important;
     gap: 8px !important;
   }
 
-  /* 下拉選單在手機上各佔一半空間並排 */
   .search-bar select {
     flex: 1 !important;
     min-width: calc(50% - 4px) !important;
   }
 
-  /* 日期區塊在手機上強迫單獨佔滿一行 */
   .mobile-date-range-row {
     width: 100% !important;
   }
@@ -350,13 +377,11 @@ tr:hover td {
   }
 
   .mobile-date-range-row .date-item input {
-    width: 100% !important; /* 手機版日期輸入框撐滿 */
+    width: 100% !important;
   }
 
-  /* 關鍵字搜尋欄在手機上也強迫佔滿一行 */
   .search-bar .search-keyword {
     width: 100% !important;
-    max-width: none !important;
     flex: none !important;
   }
 }
@@ -455,57 +480,66 @@ tr:hover td {
   </div>
 
   <!-- 查詢分頁 -->
-  <div id="tab-query" class="tab-pane" style="display:none">
-    <div class="panel">
-      <div class="panel-hdr"><span class="panel-title"><i class="ti ti-search"></i>查詢明細</span>
-        <button class="btn primary" onclick="runQuery()"><i class="ti ti-search"></i>查詢</button>
-      </div>
-     <div class="panel-body">
-  <div class="search-bar">
+<div id="tab-query" class="tab-pane" style="display:none">
+  <div class="panel">
     
-    <select id="q-acct">
-      <option value="">全部帳戶</option>
-      <option value="農會儲簿">農會儲簿</option>
-      <option value="台企儲簿">台企儲簿</option>
-      <option value="零用金（採購）">零用金（採購）</option>
-      <option value="基金會">基金會</option>
-    </select>
-
-    <select id="q-type">
-      <option value="">全部類型</option>
-      <option value="收入">收入</option>
-      <option value="支出">支出</option>
-      <option value="上期結存">上期結存</option>
-    </select>
-
-    <div class="mobile-date-range-row" style="display: flex; gap: 8px; align-items: center; box-sizing: border-box;">
-      <div class="date-item" style="display: flex; align-items: center; gap: 4px;">
-        <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap;">起始</label>
-        <input type="date" id="q-date-from"
-               style="height:36px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
-                      background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
-                      outline:none; cursor:pointer; box-sizing: border-box;"
-               onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
-      </div>
-
-      <div class="date-item" style="display: flex; align-items: center; gap: 4px;">
-        <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap;">結束</label>
-        <input type="date" id="q-date-to"
-               style="height:36px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
-                      background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
-                      outline:none; cursor:pointer; box-sizing: border-box;"
-               onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
-      </div>
+    <div class="panel-hdr" style="display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
+      <span class="panel-title" style="margin: 0; display: flex; align-items: center; gap: 4px;">
+        <i class="ti ti-search"></i>查詢明細
+      </span>
+      <button class="btn primary" onclick="runQuery()" style="height: 34px; padding: 0 16px; display: flex; align-items: center; gap: 4px; white-space: nowrap; cursor: pointer;">
+        <i class="ti ti-search"></i>查詢
+      </button>
     </div>
 
-    <input type="text" id="q-keyword" class="search-keyword" placeholder="科目／商家 / 摘要關鍵字"
-           style="height:36px; padding:0 12px; border:1px solid var(--paper-dark); border-radius:var(--radius);
-                  background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
-                  outline:none; box-sizing: border-box;" />
+    <div class="panel-body">
+      <div class="search-bar">
+        
+        <select id="q-acct">
+          <option value="">全部帳戶</option>
+          <option value="農會儲簿">農會儲簿</option>
+          <option value="台企儲簿">台企儲簿</option>
+          <option value="零用金（採購）">零用金（採購）</option>
+          <option value="基金會">基金會</option>
+        </select>
 
+        <select id="q-type">
+          <option value="">全部類型</option>
+          <option value="收入">收入</option>
+          <option value="支出">支出</option>
+          <option value="上期結存">上期結存</option>
+        </select>
+
+        <div class="mobile-date-range-row" style="display: flex; gap: 8px; align-items: center; box-sizing: border-box;">
+          <div class="date-item" style="display: flex; align-items: center; gap: 4px;">
+            <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap;">起始</label>
+            <input type="date" id="q-date-from"
+                   style="height:36px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
+                          background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
+                          outline:none; cursor:pointer; box-sizing: border-box;"
+                   onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
+          </div>
+
+          <div class="date-item" style="display: flex; align-items: center; gap: 4px;">
+            <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap;">結束</label>
+            <input type="date" id="q-date-to"
+                   style="height:36px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
+                          background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
+                          outline:none; cursor:pointer; box-sizing: border-box;"
+                   onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
+          </div>
+        </div>
+
+        <input type="text" id="q-keyword" class="search-keyword" placeholder="科目／商家 / 摘要關鍵字"
+               style="height:36px; padding:0 12px; border:1px solid var(--paper-dark); border-radius:var(--radius);
+                      background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
+                      outline:none; box-sizing: border-box;" />
+
+      </div>
+      
+      <div id="query-stats" style="display:none" class="summary-row"></div>
+    </div>
   </div>
-  
-  <div id="query-stats" style="display:none" class="summary-row"></div>
 </div>
     </div>
     <div class="panel">
