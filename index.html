@@ -293,7 +293,7 @@ tr:hover td {
     font-size: 12px !important;
   }
 }
-/* ─── 💻 電腦版基本外觀 ─── */
+/* ─── 💻 電腦版：下方四個篩選欄位完美拉直鋪滿 ─── */
 .search-bar {
   display: flex !important;
   flex-direction: row !important;
@@ -301,6 +301,7 @@ tr:hover td {
   flex-wrap: nowrap !important;
   gap: 10px !important;
   width: 100% !important;
+  margin-bottom: 16px !important; 
 }
 
 .search-bar select {
@@ -319,10 +320,23 @@ tr:hover td {
   width: 140px !important; 
 }
 
-/* 讓輸入框自動吃掉剩下寬度，不擠壓卡片 */
+/* 關鍵字搜尋欄：自由伸展吃掉剩餘寬度 */
 .search-bar .search-keyword {
   flex: 1 !important;        
   min-width: 200px !important;
+}
+
+/* ─── 📊 統計卡片基本樣式優化（💡 移除 !important 的 display，不干擾 JS 顯示隱藏） ─── */
+#query-stats {
+  width: 100% !important;
+  margin-top: 15px !important;
+  margin-bottom: 15px !important;
+}
+
+/* 確保當 JS 讓它顯示時，裡面的卡片能漂亮地並排與平分 */
+#query-stats.summary-row, 
+.summary-row {
+  gap: 15px !important;
 }
 
 /* ─── 📱 手機版專屬 RWD 響應式排版 ─── */
