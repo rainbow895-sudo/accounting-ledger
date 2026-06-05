@@ -482,11 +482,23 @@ tr:hover td {
       </button>
     </div>
 
+    <div id="tab-query" class="tab-pane" style="display:none">
+  <div class="panel">
+    
+    <div class="panel-hdr" style="display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
+      <span class="panel-title" style="margin: 0; display: flex; align-items: center; gap: 4px;">
+        <i class="ti ti-search"></i>查詢明細
+      </span>
+      <button class="btn primary" onclick="runQuery()" style="height: 34px; padding: 0 16px; display: flex; align-items: center; gap: 4px; white-space: nowrap; cursor: pointer;">
+        <i class="ti ti-search"></i>查詢
+      </button>
+    </div>
+
     <div class="panel-body">
       
-      <div class="search-bar" style="margin-bottom: 16px;">
+      <div class="search-bar" style="display: flex; flex-direction: row; align-items: center; flex-wrap: nowrap; gap: 10px; width: 100%; margin-bottom: 20px;">
         
-        <select id="q-acct">
+        <select id="q-acct" style="height: 36px; min-width: 110px;">
           <option value="">全部帳戶</option>
           <option value="農會儲簿">農會儲簿</option>
           <option value="台企儲簿">台企儲簿</option>
@@ -494,18 +506,18 @@ tr:hover td {
           <option value="基金會">基金會</option>
         </select>
 
-        <select id="q-type">
+        <select id="q-type" style="height: 36px; min-width: 110px;">
           <option value="">全部類型</option>
           <option value="收入">收入</option>
           <option value="支出">支出</option>
           <option value="上期結存">上期結存</option>
         </select>
 
-        <div class="mobile-date-range-row" style="display: flex; gap: 8px; align-items: center; box-sizing: border-box;">
+        <div class="mobile-date-range-row" style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
           <div class="date-item" style="display: flex; align-items: center; gap: 4px;">
             <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap;">起始</label>
             <input type="date" id="q-date-from"
-                   style="height:36px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
+                   style="height:36px; width:140px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
                           background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
                           outline:none; cursor:pointer; box-sizing: border-box;"
                    onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
@@ -514,7 +526,7 @@ tr:hover td {
           <div class="date-item" style="display: flex; align-items: center; gap: 4px;">
             <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap;">結束</label>
             <input type="date" id="q-date-to"
-                   style="height:36px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
+                   style="height:36px; width:140px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
                           background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
                           outline:none; cursor:pointer; box-sizing: border-box;"
                    onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
@@ -522,11 +534,11 @@ tr:hover td {
         </div>
 
         <input type="text" id="q-keyword" class="search-keyword" placeholder="科目／商家 / 摘要關鍵字"
-               style="height:36px; padding:0 12px; border:1px solid var(--paper-dark); border-radius:var(--radius);
+               style="flex: 1; min-width: 200px; height:36px; padding:0 12px; border:1px solid var(--paper-dark); border-radius:var(--radius);
                       background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
                       outline:none; box-sizing: border-box;" />
 
-      </div> <div id="query-stats" style="display:none" class="summary-row"></div>
+      </div> <div id="query-stats" style="display:none; width:100% !important; display:flex !important; flex-direction:row !important; gap:15px !important; margin-top:15px !important; margin-bottom:15px !important;"></div>
       
     </div>
   </div>
