@@ -223,67 +223,40 @@ tr:hover td {
   flex-wrap: nowrap;
 }
 
-/* ─── 📱 全分頁通用版：只要進入「行內編輯」，手機版一律變身直向卡片 ─── */
+/* ─── 📱 手機版專屬：查詢結果表格「局部橫向滑動」防跑偏防折行 ─── */
 @media screen and (max-width: 768px) {
   
-  /* 1. 全站任何表格列只要進入 is-editing 狀態，一律變身獨立立體卡片 */
-  tr.is-editing {
-    display: flex !important;
-    flex-direction: column !important;
-    background: #fffdf3 !important;      
-    padding: 12px !important;
-    margin: 10px 0 !important;
-    border: 2px solid #ffeb99 !important; 
-    border-radius: 8px !important;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05) !important;
+  /* 1. 讓包裹表格的外層容器（您原本就有寫的 table-wrap）在手機上可以左右滑動 */
+  .table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch; /* 讓 iPhone 滑起來有流暢的阻尼彈性 */
+    border: 1px solid #e0e0e0;          /* 幫表格加個淡淡的邊框，讓邊界更明顯 */
+    margin-bottom: 15px;
   }
-  
-  /* 2. 把 td 轉成上下直向排列 */
-  tr.is-editing td {
-    display: flex !important;
-    align-items: center !important;
-    border: none !important;             
-    padding: 6px 0 !important;
-    width: 100% !important;
-    text-align: left !important;
-  }
-  
-  /* 3. 在輸入框左邊塞入漂亮的中文欄位提示 */
-  tr.is-editing td::before {
-    width: 85px !important;
-    font-weight: bold !important;
-    color: #555 !important;
-    font-size: 13px !important;
-    flex-shrink: 0 !important;
-  }
-  
-  /* 💡 這裡同時相容「查詢分頁(qcell)」與「一般記帳分頁(cell)」的 class 名稱 */
-  tr.is-editing td.cell-date::before, tr.is-editing td.qcell-date::before     { content: "📅 修改日期：" !important; }
-  tr.is-editing td.mu:nth-child(2)::before                                    { content: "🏦 帳戶分頁：" !important; }
-  tr.is-editing td.cell-subj::before, tr.is-editing td.qcell-subj::before     { content: "🏷️ 科目商家：" !important; }
-  tr.is-editing td.cell-note::before, tr.is-editing td.qcell-note::before     { content: "📝 摘要備註：" !important; }
-  tr.is-editing td:nth-child(5)::before                                       { content: "📊 類型狀態：" !important; }
-  tr.is-editing td.cell-inc::before, tr.is-editing td.cell-exp::before, 
-  tr.is-editing td.qcell-amount::before                                       { content: "💰 修改金額：" !important; }
-  tr.is-editing td:last-child::before                                         { content: "⚙️ 執行操作：" !important; }
 
-  /* 4. 讓手機版的輸入框撐滿，手指極度好點 */
-  tr.is-editing input {
-    flex: 1 !important;
-    width: 100% !important;
-    height: 36px !important;
-    font-size: 16px !important;          
+  /* 2. 強制表格內所有欄位文字「絕對不准折行」，有多少欄就往右邊鋪多長 */
+  .table-wrap table th,
+  .table-wrap table td {
+    white-space: nowrap !important;
+    padding: 10px 8px !important;    /* 給手指頭足夠的點擊空間 */
+    font-size: 14px !important;
+  }
+
+  /* 3. 當點擊編輯（is-editing）變身輸入框時，維持橫向表格，只把輸入框寬度定死 */
+  /* 這樣既不會把上下其他行撐開，也不會導致排版跑偏 */
+  .table-wrap tr.is-editing input {
+    width: 90px !important;          /* 限制手機上表格內輸入框的寬度 */
+    height: 30px !important;
+    font-size: 14px !important;      
+    padding: 2px 4px !important;
+    box-sizing: border-box !important;
     border: 1px solid #ccc !important;
     border-radius: 4px !important;
-    padding: 0 8px !important;
-    box-sizing: border-box !important;
   }
-
-  /* 5. 讓操作按鈕在手機上放大 */
-  tr.is-editing .btn {
-    padding: 8px 16px !important;
-    font-size: 14px !important;
-    min-width: 70px !important;
+  
+  /* 針對摘要備註通常字比較多，可以讓輸入框稍微寬一點 */
+  .table-wrap tr.is-editing td.qcell-note input {
+    width: 120px !important;
   }
 }
   </style>
