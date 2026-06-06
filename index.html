@@ -263,21 +263,30 @@ tr:hover td {
 @media screen and (max-width: 768px) {
   
   /* 1. 調整最外層的 Header 容器，讓它在手機上有足夠的高度伸展 */
-  /* 💡 假設您的頂部容器 class 是 .header 或 .brand-container，這裡用通用選擇器精準鎖定 */
   header, .header, div[style*="background"] {
     height: auto !important;          /* 取消固定高度，改由內容自動撐開 */
     padding: 12px 8px !important;     /* 給上下留點舒適的內距 */
   }
 
-  /* 2. 修正「九肉北極殿帳務管理系統」大標題 */
-  /* 💡 這裡鎖定您的主標題（通常是 h1, h2 或大級距的文字） */
+  /* ========================================== */
+  /* 🎯 2. 修正大標題：精準強制拆成兩行（九肉北極殿 / 帳務管理系統） */
+  /* ========================================== */
   header h1, .header-title, h1, h2 {
-    font-size: 18px !important;       /* 💡 稍微縮小字體，一橫行就能完美裝下 */
-    line-height: 1.4 !important;      /* 給予標準行高，防止換行時文字上下重疊 */
-    white-space: normal !important;   /* 允許在手機上自然換行 */
+    font-size: 15px !important;       /* 第一行「九肉北極殿」的大小 */
+    font-weight: bold !important;
+    line-height: 1.3 !important;      /* 微調行高，讓兩行更緊湊美觀 */
     margin: 0 0 8px 0 !important;     /* 與下方的按鈕群留出乾淨的距離 */
     display: block !important;
     width: 100% !important;
+  }
+
+  /* 💡 核心魔法：利用關鍵字「帳務管理系統」前面強制斷行，並縮小字體營造層次感 */
+  header h1::after, .header-title::after, h1::after, h2::after {
+    content: "\A 帳務管理系統" !important; /* \A 代表換行 */
+    white-space: pre-wrap !important;    /* 讓換行符號生效 */
+    font-size: 12px !important;          /* 第二行稍微縮小，更有精緻感 */
+    color: #dfdfdf !important;           /* 微調成溫和的淺灰色 */
+    font-weight: normal !important;
   }
 
   /* 3. 讓「同步完成」和「匯出 Excel」按鈕群在手機上整齊並排或靠右 */
