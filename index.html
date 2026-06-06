@@ -468,10 +468,12 @@ tr:hover td {
 
   <!-- 查詢分頁 -->
   <div id="tab-query" class="tab-pane" style="display:none">
-  <div class="panel">
+  <div class="panel" style="background: var(--paper, #ffffff) !important; border-radius: var(--radius, 8px); box-shadow: 0 2px 12px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px;">
     
-    <div class="panel-hdr" style="display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
-      <span class="panel-title" style="margin: 0; display: flex; align-items: center; gap: 4px;">
+    <div id="query-stats" style="display:none; clear: both; width: 100%; margin-bottom: 20px; grid-template-columns: repeat(3, 1fr); gap: 15px;"></div>
+
+    <div class="panel-hdr" style="display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; border-bottom: 1px solid var(--paper-dark, #f0f0f0); padding-bottom: 15px; margin-bottom: 20px;">
+      <span class="panel-title" style="margin: 0; display: flex; align-items: center; gap: 4px; font-weight: bold;">
         <i class="ti ti-search"></i>查詢明細
       </span>
       <button class="btn primary" onclick="runQuery()" style="height: 34px; padding: 0 16px; display: flex; align-items: center; gap: 4px; white-space: nowrap; cursor: pointer;">
@@ -481,7 +483,7 @@ tr:hover td {
 
     <div class="panel-body">
       
-      <div class="search-bar" style="width: 100%; margin-bottom: 20px; clear: both;">
+      <div class="search-bar" style="width: 100%; margin-bottom: 25px; clear: both;">
         
         <select id="q-acct" style="height: 36px; min-width: 110px; margin-right: 6px; margin-bottom: 8px; vertical-align: middle;">
           <option value="">全部帳戶</option>
@@ -523,9 +525,7 @@ tr:hover td {
                       background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
                       outline:none; box-sizing: border-box; vertical-align: middle; margin-bottom: 8px;" />
 
-      </div> <div id="query-stats" style="display:none; clear: both; width: 100%; margin-top: 20px; margin-bottom: 20px; grid-template-columns: repeat(3, 1fr); gap: 15px;"></div>
-      
-     <div style="margin-top: 25px; clear: both;">
+      </div> <div style="margin-top: 25px; clear: both;">
         <h3 style="font-size: 14px; color: var(--ink-soft); margin-bottom: 10px;">
           <i class="ti ti-list"></i> 查詢結果
         </h3>
