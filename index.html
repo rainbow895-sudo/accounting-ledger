@@ -467,88 +467,96 @@ tr:hover td {
   </div>
 
   <!-- 查詢分頁 -->
-  <div id="tab-query" class="tab-pane" style="display:none">
-  <div class="panel" style="background: var(--paper, #ffffff) !important; border-radius: var(--radius, 8px); box-shadow: 0 2px 12px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px;">
-    
-    <div id="query-stats" style="display:none; clear: both; width: 100%; margin-bottom: 20px; grid-template-columns: repeat(3, 1fr); gap: 15px;"></div>
-
-    <div class="panel-hdr" style="display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; border-bottom: 1px solid var(--paper-dark, #f0f0f0); padding-bottom: 15px; margin-bottom: 20px;">
-      <span class="panel-title" style="margin: 0; display: flex; align-items: center; gap: 4px; font-weight: bold;">
-        <i class="ti ti-search"></i>查詢明細
-      </span>
-      <button class="btn primary" onclick="runQuery()" style="height: 34px; padding: 0 16px; display: flex; align-items: center; gap: 4px; white-space: nowrap; cursor: pointer;">
-        <i class="ti ti-search"></i>查詢
-      </button>
+ <div id="tab-query" class="tab-pane" style="display:none">
+  
+  <div id="query-stats" style="display:none; clear: both; width: 100%; margin-bottom: 25px; grid-template-columns: repeat(3, 1fr); gap: 15px;">
     </div>
 
-    <div class="panel-body">
+  <div class="panel" style="background: var(--paper, #ffffff) !important; border-radius: var(--radius, 8px); box-shadow: 0 2px 12px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 25px;">
+    
+    <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 6px; font-weight: bold; color: var(--ink, #000000);">
+      <i class="ti ti-search" style="color: var(--gold, #bfa15f);"></i> 查詢條件
+    </div>
+
+    <div class="search-bar" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; width: 100%; clear: both;">
       
-      <div class="search-bar" style="width: 100%; margin-bottom: 25px; clear: both;">
-        
-        <select id="q-acct" style="height: 36px; min-width: 110px; margin-right: 6px; margin-bottom: 8px; vertical-align: middle;">
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <label style="font-size: 12px; color: var(--ink-soft); font-weight: 500;">帳戶</label>
+        <select id="q-acct" style="height: 36px; min-width: 120px; padding: 0 8px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); outline: none;">
           <option value="">全部帳戶</option>
           <option value="農會儲簿">農會儲簿</option>
           <option value="台企儲簿">台企儲簿</option>
           <option value="零用金（採購）">零用金（採購）</option>
           <option value="基金會">基金會</option>
         </select>
+      </div>
 
-        <select id="q-type" style="height: 36px; min-width: 110px; margin-right: 6px; margin-bottom: 8px; vertical-align: middle;">
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <label style="font-size: 12px; color: var(--ink-soft); font-weight: 500;">類型</label>
+        <select id="q-type" style="height: 36px; min-width: 110px; padding: 0 8px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); outline: none;">
           <option value="">全部類型</option>
           <option value="收入">收入</option>
           <option value="支出">支出</option>
           <option value="上期結存">上期結存</option>
         </select>
-
-        <div class="mobile-date-range-row" style="display: inline-flex; gap: 8px; align-items: center; margin-right: 6px; margin-bottom: 8px; vertical-align: middle; box-sizing: border-box;">
-          <div class="date-item" style="display: flex; align-items: center; gap: 4px;">
-            <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap;">起始</label>
-            <input type="date" id="q-date-from"
-                   style="height:36px; width:135px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
-                          background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
-                          outline:none; cursor:pointer; box-sizing: border-box;"
-                   onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
-          </div>
-
-          <div class="date-item" style="display: flex; align-items: center; gap: 4px;">
-            <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap;">結束</label>
-            <input type="date" id="q-date-to"
-                   style="height:36px; width:135px; padding:0 8px; border:1px solid var(--paper-dark); border-radius:var(--radius);
-                          background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
-                          outline:none; cursor:pointer; box-sizing: border-box;"
-                   onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
-          </div>
-        </div>
-
-        <input type="text" id="q-keyword" class="search-keyword" placeholder="科目／商家 / 摘要關鍵字"
-               style="height:36px; width: 280px; max-width: 100%; padding:0 12px; border:1px solid var(--paper-dark); border-radius:var(--radius);
-                      background:var(--paper); color:var(--ink); font-size:13px; font-family:var(--sans);
-                      outline:none; box-sizing: border-box; vertical-align: middle; margin-bottom: 8px;" />
-
-      </div> <div style="margin-top: 25px; clear: both;">
-        <h3 style="font-size: 14px; color: var(--ink-soft); margin-bottom: 10px;">
-          <i class="ti ti-list"></i> 查詢結果
-        </h3>
-        <div id="query-count" style="font-size: 12px; color: var(--ink-soft); margin-bottom: 12px;">共 0 筆</div>
-        
-        <div class="table-responsive" style="width: 100%; overflow-x: auto; background: var(--paper, #ffffff); border-radius: var(--radius, 8px); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-          <table class="table" style="width: 100%; border-collapse: collapse; background: var(--paper, #ffffff) !important;">
-            <thead>
-              <tr style="background: var(--paper-dark, #f5f5f5); text-align: left;">
-                <th style="padding: 12px 10px; color: var(--ink-soft);">日期</th>
-                <th style="padding: 12px 10px; color: var(--ink-soft);">帳戶</th>
-                <th style="padding: 12px 10px; color: var(--ink-soft);">科目／商家</th>
-                <th style="padding: 12px 10px; color: var(--ink-soft);">摘要</th>
-                <th style="padding: 12px 10px; color: var(--ink-soft);">類型</th>
-                <th style="padding: 12px 10px; text-align: right; color: var(--ink-soft);">金額</th>
-                <th style="padding: 12px 10px; text-align: center; color: var(--ink-soft);">操作</th>
-              </tr>
-            </thead>
-            <tbody id="query-tbody" style="background: var(--paper, #ffffff) !important;">
-              </tbody>
-          </table>
-        </div>
       </div>
+
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <label style="font-size: 12px; color: var(--ink-soft); font-weight: 500;">起始日期</label>
+        <input type="date" id="q-date-from"
+               style="height: 36px; width: 140px; padding: 0 8px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 13px; outline: none; cursor: pointer; box-sizing: border-box;"
+               onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <label style="font-size: 12px; color: var(--ink-soft); font-weight: 500;">結束日期</label>
+        <input type="date" id="q-date-to"
+               style="height: 36px; width: 140px; padding: 0 8px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 13px; outline: none; cursor: pointer; box-sizing: border-box;"
+               onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1; min-width: 200px;">
+        <label style="font-size: 12px; color: var(--ink-soft); font-weight: 500;">關鍵字搜尋</label>
+        <input type="text" id="q-keyword" placeholder="科目／商家 / 摘要關鍵字"
+               style="height: 36px; width: 100%; padding: 0 12px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 13px; outline: none; box-sizing: border-box;"
+               onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 20px;">
+        <button class="btn primary" onclick="runQuery()" style="height: 36px; padding: 0 20px; display: flex; align-items: center; gap: 6px; white-space: nowrap; cursor: pointer; font-weight: bold;">
+          <i class="ti ti-search"></i> 執行查詢
+        </button>
+      </div>
+
+    </div> </div> <div style="margin-top: 10px; clear: both;">
+    
+    <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+      <h3 style="font-size: 14px; color: var(--ink, #000000); font-weight: bold; margin: 0; display: flex; align-items: center; gap: 6px;">
+        <i class="ti ti-list" style="color: var(--gold, #bfa15f);"></i> 查詢結果明細
+      </h3>
+      <div id="query-count" style="font-size: 12px; color: var(--ink-soft);">共 0 筆</div>
+    </div>
+    
+    <div class="table-responsive" style="width: 100%; overflow-x: auto; background: var(--paper, #ffffff); border-radius: var(--radius, 8px); box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid var(--paper-dark, #f0f0f0);">
+      <table class="table" style="width: 100%; border-collapse: collapse; background: var(--paper, #ffffff) !important;">
+        <thead>
+          <tr style="background: var(--paper-dark, #f5f5f5); text-align: left; border-bottom: 1px solid var(--paper-dark);">
+            <th style="padding: 12px 10px; color: var(--ink-soft); font-weight: 600;">日期</th>
+            <th style="padding: 12px 10px; color: var(--ink-soft); font-weight: 600;">帳戶</th>
+            <th style="padding: 12px 10px; color: var(--ink-soft); font-weight: 600;">科目／商家</th>
+            <th style="padding: 12px 10px; color: var(--ink-soft); font-weight: 600;">摘要</th>
+            <th style="padding: 12px 10px; color: var(--ink-soft); font-weight: 600;">類型</th>
+            <th style="padding: 12px 10px; text-align: right; color: var(--ink-soft); font-weight: 600;">金額</th>
+            <th style="padding: 12px 10px; text-align: center; color: var(--ink-soft); font-weight: 600;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="query-tbody" style="background: var(--paper, #ffffff) !important;">
+          </tbody>
+      </table>
+    </div>
+  </div>
+
+
 </main>
 
 <script>
