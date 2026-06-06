@@ -467,7 +467,7 @@ tr:hover td {
   </div>
 
   <!-- 查詢分頁 -->
- <div id="tab-query" class="tab-pane" style="display:none">
+<div id="tab-query" class="tab-pane" style="display:none">
   
   <div id="query-stats" style="display:none; clear: both; width: 100%; margin-bottom: 25px; grid-template-columns: repeat(3, 1fr); gap: 15px;">
     </div>
@@ -501,20 +501,27 @@ tr:hover td {
         </select>
       </div>
 
-      <div style="display: flex; gap: 8px; flex: 2; min-width: 280px; width: 100%; box-sizing: border-box;">
-        <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
-          <label style="font-size: 12px; color: var(--ink-soft); font-weight: 500;">起始日期</label>
-          <input type="date" id="q-date-from"
-                 style="height: 36px; width: 100%; padding: 0 8px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 13px; outline: none; cursor: pointer; box-sizing: border-box;"
-                 onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
-        </div>
-
-        <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
-          <label style="font-size: 12px; color: var(--ink-soft); font-weight: 500;">結束日期</label>
-          <input type="date" id="q-date-to"
-                 style="height: 36px; width: 100%; padding: 0 8px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 13px; outline: none; cursor: pointer; box-sizing: border-box;"
-                 onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
-        </div>
+      <div style="flex: 2; min-width: 280px; width: 100%; box-sizing: border-box;">
+        <table style="width: 100%; border-collapse: collapse; border: none; padding: 0; margin: 0; background: transparent;">
+          <tr style="background: transparent;">
+            <td style="width: 50%; padding: 0 4px 0 0; border: none; text-align: left; vertical-align: bottom;">
+              <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
+                <label style="font-size: 12px; color: var(--ink-soft); font-weight: 500;">起始日期</label>
+                <input type="date" id="q-date-from"
+                       style="height: 36px; width: 100%; padding: 0 6px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 12px; outline: none; cursor: pointer; box-sizing: border-box;"
+                       onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
+              </div>
+            </td>
+            <td style="width: 50%; padding: 0 0 0 4px; border: none; text-align: left; vertical-align: bottom;">
+              <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
+                <label style="font-size: 12px; color: var(--ink-soft); font-weight: 500;">結束日期</label>
+                <input type="date" id="q-date-to"
+                       style="height: 36px; width: 100%; padding: 0 6px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 12px; outline: none; cursor: pointer; box-sizing: border-box;"
+                       onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
+              </div>
+            </td>
+          </tr>
+        </table>
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 4px; flex: 3; min-width: 200px; width: 100%;">
@@ -556,6 +563,7 @@ tr:hover td {
       </table>
     </div>
   </div>
+
 
 </main>
 
