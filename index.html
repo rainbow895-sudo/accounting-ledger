@@ -474,15 +474,15 @@ tr:hover td {
 
   <div class="panel" style="background: var(--paper, #ffffff) !important; border-radius: var(--radius, 8px); box-shadow: 0 2px 12px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 25px;">
     
-    <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 6px; font-weight: bold; color: var(--ink, #000000);">
+    <div style="margin-bottom: 18px; display: flex; align-items: center; gap: 6px; font-weight: bold; font-size: 15px; color: var(--ink, #000000);">
       <i class="ti ti-search" style="color: var(--gold, #bfa15f);"></i> 查詢條件
     </div>
 
-    <div class="search-bar" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; width: 100%; clear: both;">
+    <div class="search-bar" style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; width: 100%; clear: both;">
       
-      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 110px;">
-        <label style="font-size: 12px; color: var(--ink-soft); font-weight: 500;">帳戶</label>
-        <select id="q-acct" style="height: 36px; width: 100%; padding: 0 8px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); outline: none; box-sizing: border-box;">
+      <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 120px;">
+        <label style="font-size: 13px; color: var(--ink-soft); font-weight: bold;">帳戶</label>
+        <select id="q-acct" style="height: 42px; width: 100%; padding: 0 12px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 14px; outline: none; box-sizing: border-box; -webkit-appearance: none; -moz-appearance: none; appearance: none;">
           <option value="">全部帳戶</option>
           <option value="農會儲簿">農會儲簿</option>
           <option value="台企儲簿">台企儲簿</option>
@@ -491,9 +491,9 @@ tr:hover td {
         </select>
       </div>
 
-      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 110px;">
-        <label style="font-size: 12px; color: var(--ink-soft); font-weight: 500;">類型</label>
-        <select id="q-type" style="height: 36px; width: 100%; padding: 0 8px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); outline: none; box-sizing: border-box;">
+      <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 120px;">
+        <label style="font-size: 13px; color: var(--ink-soft); font-weight: bold;">類型</label>
+        <select id="q-type" style="height: 42px; width: 100%; padding: 0 12px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 14px; outline: none; box-sizing: border-box; -webkit-appearance: none; -moz-appearance: none; appearance: none;">
           <option value="">全部類型</option>
           <option value="收入">收入</option>
           <option value="支出">支出</option>
@@ -504,19 +504,19 @@ tr:hover td {
       <div style="flex: 2; min-width: 280px; width: 100%; box-sizing: border-box;">
         <table style="width: 100%; border-collapse: collapse; border: none; padding: 0; margin: 0; background: transparent;">
           <tr style="background: transparent;">
-            <td style="width: 50%; padding: 0 4px 0 0; border: none; text-align: left; vertical-align: bottom;">
-              <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
-                <label style="font-size: 12px; color: var(--ink-soft); font-weight: 500;">起始日期</label>
+            <td style="width: 50%; padding: 0 6px 0 0; border: none; text-align: left; vertical-align: bottom;">
+              <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+                <label style="font-size: 13px; color: var(--ink-soft); font-weight: bold;">起始日期</label>
                 <input type="date" id="q-date-from"
-                       style="height: 36px; width: 100%; padding: 0 6px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 12px; outline: none; cursor: pointer; box-sizing: border-box;"
+                       style="height: 42px; width: 100%; padding: 0 10px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 14px; outline: none; cursor: pointer; box-sizing: border-box;"
                        onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
               </div>
             </td>
-            <td style="width: 50%; padding: 0 0 0 4px; border: none; text-align: left; vertical-align: bottom;">
-              <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
-                <label style="font-size: 12px; color: var(--ink-soft); font-weight: 500;">結束日期</label>
+            <td style="width: 50%; padding: 0 0 0 6px; border: none; text-align: left; vertical-align: bottom;">
+              <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+                <label style="font-size: 13px; color: var(--ink-soft); font-weight: bold;">結束日期</label>
                 <input type="date" id="q-date-to"
-                       style="height: 36px; width: 100%; padding: 0 6px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 12px; outline: none; cursor: pointer; box-sizing: border-box;"
+                       style="height: 42px; width: 100%; padding: 0 10px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 14px; outline: none; cursor: pointer; box-sizing: border-box;"
                        onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
               </div>
             </td>
@@ -524,15 +524,15 @@ tr:hover td {
         </table>
       </div>
 
-      <div style="display: flex; flex-direction: column; gap: 4px; flex: 3; min-width: 200px; width: 100%;">
-        <label style="font-size: 12px; color: var(--ink-soft); font-weight: 500;">關鍵字搜尋</label>
+      <div style="display: flex; flex-direction: column; gap: 6px; flex: 3; min-width: 200px; width: 100%;">
+        <label style="font-size: 13px; color: var(--ink-soft); font-weight: bold;">關鍵字搜尋</label>
         <input type="text" id="q-keyword" placeholder="科目／商家 / 摘要關鍵字"
-               style="height: 36px; width: 100%; padding: 0 12px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 13px; outline: none; box-sizing: border-box;"
+               style="height: 42px; width: 100%; padding: 0 12px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 14px; outline: none; box-sizing: border-box;"
                onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 4px; min-width: 110px; width: 100%; max-width: 150px;">
-        <button class="btn primary" onclick="runQuery()" style="height: 36px; width: 100%; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; cursor: pointer; font-weight: bold; box-sizing: border-box;">
+        <button class="btn primary" onclick="runQuery()" style="height: 42px; width: 100%; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; cursor: pointer; font-weight: bold; font-size: 14px; box-sizing: border-box;">
           <i class="ti ti-search"></i> 執行查詢
         </button>
       </div>
@@ -563,6 +563,7 @@ tr:hover td {
       </table>
     </div>
   </div>
+
 
 
 </main>
