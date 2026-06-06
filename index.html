@@ -439,7 +439,7 @@ tr:hover td {
             </select>
           </div>
           <div class="fg"><label>金額</label><input type="number" id="fx-amount" placeholder="0" min="0" inputmode="decimal" pattern="[0-9]*"/></div>
-          <div class="fg"><label>備註</label><input type="text" id="fx-note" placeholder="陳文雄…"/></div>
+          <div class="fg"><label>備註</label><input type="text" id="fx-note" placeholder="…"/></div>
           <div class="fg"><label>&nbsp;</label><button class="btn primary" id="fx-add-btn" onclick="addFixed()"><i class="ti ti-plus"></i>新增</button></div>
         </div>
       </div>
@@ -469,6 +469,80 @@ tr:hover td {
   <!-- 查詢分頁 -->
 <div id="tab-query" class="tab-pane" style="display:none">
   
+  <style>
+    /* 預設：電腦端（寬螢幕）的優雅一字橫排配置 */
+    .q-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+      width: 100%;
+    }
+    .q-field-acct { flex: 1; min-width: 120px; }
+    .q-field-type { flex: 1; min-width: 110px; }
+    .q-field-dates { display: flex; gap: 10px; flex: 2; min-width: 290px; }
+    .q-field-keyword { flex: 3; min-width: 220px; }
+    .q-field-btn { min-width: 120px; }
+
+    /* 📱 關鍵核心：當螢幕寬度小於 768px（手機/平板直向）時的極致調校 */
+    @media (max-width: 767px) {
+      .q-container {
+        display: block !important; /* 取消彈性橫排，改成直向依序落落大方 */
+        width: 100% !important;
+      }
+      /* 手機上，帳戶、類型、關鍵字搜尋各自獨立一整行，寬度 100% 飽滿 */
+      .q-field-acct, .q-field-type, .q-field-keyword, .q-field-btn {
+        width: 100% !important;
+        margin-bottom: 14px !important;
+      }
+      /* 日期容器在手機上強制維持 Flex 並排，絕不上下錯開 */
+      .q-field-dates {
+        display: flex !important;
+        gap: 12px !important; /* 起始與結束中間的呼吸黃金間距 */
+        width: 100% !important;
+        margin-bottom: 14px !important;
+      }
+      /* 讓起始日期和結束日期在手機上精確各佔 50% */
+      .q-field-dates > div {
+        flex: 1 !important;
+        width: 50% !important;
+      }
+      /* 查詢按鈕在手機上變成滿版大按鈕，超級好按 */
+      .q-field-btn {
+        max-width: 100% !important;
+        margin-bottom: 0 !important;
+        margin-top: 5px !important;
+      }
+    }
+
+    /* 統一加大手機端輸入框與選單的觸控飽滿度 (42px高、14px字) */
+    .q-input-style {
+      height: 42px !important;
+      width: 100% !important;
+      padding: 0 12px !important;
+      border: 1px solid var(--paper-dark, #e0e0e0) !important;
+      border-radius: var(--radius, 8px) !important;
+      background: var(--paper, #ffffff) !important;
+      color: var(--ink, #000000) !important;
+      font-size: 14px !important;
+      font-family: var(--sans) !important;
+      outline: none !important;
+      box-sizing: border-box !important;
+      -webkit-appearance: none !important; /* 消除iOS強制扁平內陰影 */
+      appearance: none !important;
+    }
+    .q-input-style:focus {
+      border-color: var(--gold, #bfa15f) !important;
+    }
+    .q-label-style {
+      font-size: 13px !important;
+      color: var(--ink-soft, #666666) !important;
+      font-weight: bold !important;
+      margin-bottom: 6px !important;
+      display: block !important;
+    }
+  </style>
+
   <div id="query-stats" style="display:none; clear: both; width: 100%; margin-bottom: 25px; grid-template-columns: repeat(3, 1fr); gap: 15px;">
     </div>
 
@@ -478,11 +552,11 @@ tr:hover td {
       <i class="ti ti-search" style="color: var(--gold, #bfa15f);"></i> 查詢條件
     </div>
 
-    <div class="search-bar" style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; width: 100%; clear: both;">
+    <div class="q-container" style="clear: both;">
       
-      <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 120px;">
-        <label style="font-size: 13px; color: var(--ink-soft); font-weight: bold;">帳戶</label>
-        <select id="q-acct" style="height: 42px; width: 100%; padding: 0 12px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 14px; outline: none; box-sizing: border-box; -webkit-appearance: none; -moz-appearance: none; appearance: none;">
+      <div class="q-field-acct">
+        <label class="q-label-style">帳戶</label>
+        <select id="q-acct" class="q-input-style">
           <option value="">全部帳戶</option>
           <option value="農會儲簿">農會儲簿</option>
           <option value="台企儲簿">台企儲簿</option>
@@ -491,9 +565,9 @@ tr:hover td {
         </select>
       </div>
 
-      <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 120px;">
-        <label style="font-size: 13px; color: var(--ink-soft); font-weight: bold;">類型</label>
-        <select id="q-type" style="height: 42px; width: 100%; padding: 0 12px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 14px; outline: none; box-sizing: border-box; -webkit-appearance: none; -moz-appearance: none; appearance: none;">
+      <div class="q-field-type">
+        <label class="q-label-style">類型</label>
+        <select id="q-type" class="q-input-style">
           <option value="">全部類型</option>
           <option value="收入">收入</option>
           <option value="支出">支出</option>
@@ -501,38 +575,24 @@ tr:hover td {
         </select>
       </div>
 
-      <div style="flex: 2; min-width: 280px; width: 100%; box-sizing: border-box;">
-        <table style="width: 100%; border-collapse: collapse; border: none; padding: 0; margin: 0; background: transparent;">
-          <tr style="background: transparent;">
-            <td style="width: 50%; padding: 0 6px 0 0; border: none; text-align: left; vertical-align: bottom;">
-              <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
-                <label style="font-size: 13px; color: var(--ink-soft); font-weight: bold;">起始日期</label>
-                <input type="date" id="q-date-from"
-                       style="height: 42px; width: 100%; padding: 0 10px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 14px; outline: none; cursor: pointer; box-sizing: border-box;"
-                       onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
-              </div>
-            </td>
-            <td style="width: 50%; padding: 0 0 0 6px; border: none; text-align: left; vertical-align: bottom;">
-              <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
-                <label style="font-size: 13px; color: var(--ink-soft); font-weight: bold;">結束日期</label>
-                <input type="date" id="q-date-to"
-                       style="height: 42px; width: 100%; padding: 0 10px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 14px; outline: none; cursor: pointer; box-sizing: border-box;"
-                       onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
-              </div>
-            </td>
-          </tr>
-        </table>
+      <div class="q-field-dates">
+        <div>
+          <label class="q-label-style">起始日期</label>
+          <input type="date" id="q-date-from" class="q-input-style" style="cursor: pointer;"/>
+        </div>
+        <div>
+          <label class="q-label-style">結束日期</label>
+          <input type="date" id="q-date-to" class="q-input-style" style="cursor: pointer;"/>
+        </div>
       </div>
 
-      <div style="display: flex; flex-direction: column; gap: 6px; flex: 3; min-width: 200px; width: 100%;">
-        <label style="font-size: 13px; color: var(--ink-soft); font-weight: bold;">關鍵字搜尋</label>
-        <input type="text" id="q-keyword" placeholder="科目／商家 / 摘要關鍵字"
-               style="height: 42px; width: 100%; padding: 0 12px; border: 1px solid var(--paper-dark); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 14px; outline: none; box-sizing: border-box;"
-               onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--paper-dark)'"/>
+      <div class="q-field-keyword">
+        <label class="q-label-style">關鍵字搜尋</label>
+        <input type="text" id="q-keyword" class="q-input-style" placeholder="科目／商家 / 摘要關鍵字"/>
       </div>
 
-      <div style="display: flex; flex-direction: column; gap: 4px; min-width: 110px; width: 100%; max-width: 150px;">
-        <button class="btn primary" onclick="runQuery()" style="height: 42px; width: 100%; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; cursor: pointer; font-weight: bold; font-size: 14px; box-sizing: border-box;">
+      <div class="q-field-btn">
+        <button class="btn primary" onclick="runQuery()" style="height: 42px; width: 100%; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; cursor: pointer; font-weight: bold; font-size: 14px; box-sizing: border-box; border-radius: var(--radius, 8px);">
           <i class="ti ti-search"></i> 執行查詢
         </button>
       </div>
@@ -563,8 +623,6 @@ tr:hover td {
       </table>
     </div>
   </div>
-
-
 
 </main>
 
