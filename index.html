@@ -622,17 +622,17 @@ tr:hover td {
       <div id="query-count" style="font-size: 12px; color: var(--ink-soft);">共 0 筆</div>
     </div>
     
-    <div class="table-responsive" style="width: 100%; overflow-x: auto; background: var(--paper, #ffffff); border-radius: var(--radius, 8px); box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid var(--paper-dark, #f0f0f0);">
-      <table class="table" style="width: 100%; border-collapse: collapse; background: var(--paper, #ffffff) !important;">
+    <div class="table-responsive" style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; background: var(--paper, #ffffff); border-radius: var(--radius, 8px); box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid var(--paper-dark, #f0f0f0);">
+      <table class="table" style="width: 100%; min-width: 620px; border-collapse: collapse; background: var(--paper, #ffffff) !important;">
         <thead>
           <tr style="background: var(--paper-dark, #f5f5f5); text-align: left; border-bottom: 1px solid var(--paper-dark);">
-            <th style="padding: 12px 10px; color: var(--ink-soft); font-weight: 600;">日期</th>
-            <th style="padding: 12px 10px; color: var(--ink-soft); font-weight: 600;">帳戶</th>
-            <th style="padding: 12px 10px; color: var(--ink-soft); font-weight: 600;">科目／商家</th>
-            <th style="padding: 12px 10px; color: var(--ink-soft); font-weight: 600;">摘要</th>
-            <th style="padding: 12px 10px; color: var(--ink-soft); font-weight: 600;">類型</th>
-            <th style="padding: 12px 10px; text-align: right; color: var(--ink-soft); font-weight: 600;">金額</th>
-            <th style="padding: 12px 10px; text-align: center; color: var(--ink-soft); font-weight: 600;">操作</th>
+            <th style="padding: 10px 8px; color: var(--ink-soft); font-weight: 600; white-space: nowrap;">日期</th>
+            <th style="padding: 10px 8px; color: var(--ink-soft); font-weight: 600; white-space: nowrap;">帳戶</th>
+            <th style="padding: 10px 8px; color: var(--ink-soft); font-weight: 600; white-space: nowrap;">科目／商家</th>
+            <th style="padding: 10px 8px; color: var(--ink-soft); font-weight: 600; white-space: nowrap;">摘要</th>
+            <th style="padding: 10px 8px; color: var(--ink-soft); font-weight: 600; white-space: nowrap;">類型</th>
+            <th style="padding: 10px 8px; text-align: right; color: var(--ink-soft); font-weight: 600; white-space: nowrap;">金額</th>
+            <th style="padding: 10px 8px; text-align: center; color: var(--ink-soft); font-weight: 600; white-space: nowrap;">操作</th>
           </tr>
         </thead>
         <tbody id="query-tbody" style="background: var(--paper, #ffffff) !important;">
@@ -1295,12 +1295,12 @@ function runQuery(){
       // 💡 幫 <tr> 加上動態 ID (qrow-帳戶-明細ID)，並幫各個要編輯的欄位加上專屬 class
       return `
         <tr class="dr" id="qrow-${r.acctKey}-${r.id}">
-          <td class="qcell-date">${r.date}</td>
-          <td class="mu">${r.acctLabel}</td>
-          <td class="qcell-subj">${r.subj || ''}</td>
-          <td class="qcell-note mu">${r.note || '—'}</td>
-          <td>${typeTag(r.type)}</td>
-          <td class="qcell-amount" style="text-align: right;"><span class="${r.type === 'income' ? 'ni' : r.type === 'expense' ? 'no' : 'mu'}">${fmtMoney(r.amount)}</span></td>
+          <td class="qcell-date" style="white-space:nowrap;">${r.date}</td>
+          <td class="mu" style="white-space:nowrap;">${r.acctLabel}</td>
+          <td class="qcell-subj" style="white-space:nowrap;">${r.subj || ''}</td>
+          <td class="qcell-note mu" style="white-space:nowrap;">${r.note || '—'}</td>
+          <td style="white-space:nowrap;">${typeTag(r.type)}</td>
+          <td class="qcell-amount" style="text-align: right; white-space:nowrap;"><span class="${r.type === 'income' ? 'ni' : r.type === 'expense' ? 'no' : 'mu'}">${fmtMoney(r.amount)}</span></td>
           <td style="white-space: nowrap; text-align: center;">${actionButtons}</td>
         </tr>`;
     }).join('');
@@ -1704,7 +1704,6 @@ async function removeEntryFromQuery(acctKey, id) {
   try {
     const res = await gsReq({ action: 'delete', id: String(id) });
     if (res.error) throw new Error(res.error);
-    // 同步從 db 與 currentAddedEntries 中移除
     db[acctKey] = db[acctKey].filter(e => e.id !== id);
     if (currentAddedEntries[acctKey]) {
       currentAddedEntries[acctKey] = currentAddedEntries[acctKey].filter(e => e.id !== id);
