@@ -75,6 +75,14 @@ body { font-family: var(--sans); background: var(--bg); color: var(--ink); min-h
   justify-content: space-between; height: 58px; border-bottom: 2px solid var(--gold); 
 }
 .site-logo { font-family: var(--serif); font-size: 19px; font-weight: 700; color: var(--gold-light); letter-spacing: .1em; display: flex; align-items: center; gap: 10px; }
+.logo-wrap { display: flex; flex-direction: row; align-items: baseline; gap: 6px; }
+.logo-main { font-size: 19px; font-weight: 700; }
+.logo-sub  { font-size: 19px; font-weight: 700; }
+@media screen and (max-width: 768px) {
+  .logo-wrap { flex-direction: column; gap: 0; line-height: 1.25; }
+  .logo-main { font-size: 15px; }
+  .logo-sub  { font-size: 11px; font-weight: 400; opacity: 0.78; letter-spacing: 0.06em; }
+}
 .sync-status { font-size: 12px; display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(240,217,128,.3); color: rgba(240,217,128,.7); white-space: nowrap; }
 
 /* 導覽功能分頁列 */
@@ -408,7 +416,7 @@ tr:hover td {
   </div>
 </div>
 <header class="site-header">
-  <div class="site-logo"><i class="ti ti-building-temple"></i>九肉北極殿帳務管理系統</div>
+  <div class="site-logo"><i class="ti ti-building-temple"></i><span class="logo-wrap"><span class="logo-main">九肉北極殿</span><span class="logo-sub">帳務管理系統</span></span></div>
   <div style="display:flex;align-items:center;gap:8px;">
     <span class="sync-status loading" id="sync-status"><i class="ti ti-cloud spin"></i>連線中…</span>
     <button class="btn ghost" onclick="exportExcel()"><i class="ti ti-file-spreadsheet"></i>匯出 Excel</button>
@@ -447,7 +455,7 @@ tr:hover td {
               <option value="E">信徒借款（E）</option>
             </select>
           </div>
-          <div class="fg"><label>金額</label><input type="number" id="fx-amount" placeholder="0" min="0" inputmode="decimal" pattern="[0-9]*"/></div>
+          <div class="fg"><label>金額</label><input type="number" id="fx-amount" placeholder="0" min="0" inputmode="numeric" pattern="[0-9]*"/></div>
           <div class="fg"><label>備註</label><input type="text" id="fx-note" placeholder="…"/></div>
           <div class="fg"><label>&nbsp;</label><button class="btn primary" id="fx-add-btn" onclick="addFixed()"><i class="ti ti-plus"></i>新增</button></div>
         </div>
@@ -835,11 +843,11 @@ function editRowInline(acct, id, btn) {
 
   // 2. 💡【核心金額解鎖】根據原本是收入或支出，將金額轉為輸入框
   if (item.type === 'income') {
-    incTd.innerHTML = `<input type="number" class="edit-input-amount" value="${item.amount}" style="width:80px; padding:2px; color:#28a745; font-weight:bold;">`;
+    incTd.innerHTML = `<input type="number" class="edit-input-amount" value="${item.amount}" inputmode="numeric" pattern="[0-9]*" style="width:80px; padding:2px; color:#28a745; font-weight:bold;">`;
     expTd.innerHTML = '<span class="mu">—</span>';
   } else {
     incTd.innerHTML = '<span class="mu">—</span>';
-    expTd.innerHTML = `<input type="number" class="edit-input-amount" value="${item.amount}" style="width:80px; padding:2px; color:#dc3545; font-weight:bold;">`;
+    expTd.innerHTML = `<input type="number" class="edit-input-amount" value="${item.amount}" inputmode="numeric" pattern="[0-9]*" style="width:80px; padding:2px; color:#dc3545; font-weight:bold;">`;
   }
 
   // 3. 按鈕變身
@@ -943,7 +951,7 @@ function buildAcctTab(acct){
               <option value="prev">上期結存</option>
             </select>
           </div>
-          <div class="fg"><label>金額</label><input type="number" id="${acct}-amount" placeholder="0" min="0" onkeydown="if(event.key==='Enter') addEntry('${acct}')"/></div>
+          <div class="fg"><label>金額</label><input type="number" id="${acct}-amount" placeholder="0" min="0" inputmode="numeric" pattern="[0-9]*" onkeydown="if(event.key==='Enter') addEntry('${acct}')"/></div>
           <div class="fg"><label>&nbsp;</label><button class="btn primary" id="${acct}-add-btn" onclick="addEntry('${acct}')"><i class="ti ti-plus"></i>新增</button></div>
         </div>
       </div>
@@ -1274,7 +1282,11 @@ function runQuery(){
     tbody.innerHTML = results.map(r => {
       // 💡 根據權限判斷是否要餵給管理員與會計「編輯」按鈕
       let actionButtons = '';
-      if (role === '管理員' || role === '會計') {
+      if (role === '管理員') {
+        actionButtons = `
+          <button class="btn primary" style="padding:4px 8px; font-size:12px; margin-right:4px;" onclick="editRowInlineQuery('${r.acctKey}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>
+          <button class="btn danger" style="padding:4px 8px; font-size:12px; background:#C0392B; color:#fff; border-color:#C0392B;" onclick="removeEntryFromQuery('${r.acctKey}','${r.id}')"><i class="ti ti-trash"></i> 刪除</button>`;
+      } else if (role === '會計') {
         actionButtons = `<button class="btn primary" style="padding:4px 8px; font-size:12px;" onclick="editRowInlineQuery('${r.acctKey}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>`;
       } else {
         actionButtons = `<span class="mu">—</span>`;
@@ -1621,7 +1633,7 @@ function editRowInlineQuery(acctKey, id, btn) {
   dateTd.innerHTML = `<input type="text" class="qedit-input-date" value="${item.date}" style="width:85px; padding:2px;">`;
   subjTd.innerHTML = `<input type="text" class="qedit-input-subj" value="${item.subj}" style="width:100px; padding:2px;">`;
   noteTd.innerHTML = `<input type="text" class="qedit-input-note" value="${item.note}" style="width:120px; padding:2px;">`;
-  amountTd.innerHTML = `<input type="number" class="qedit-input-amount" value="${item.amount}" style="width:80px; padding:2px; text-align:right;">`;
+  amountTd.innerHTML = `<input type="number" class="qedit-input-amount" value="${item.amount}" inputmode="numeric" pattern="[0-9]*" style="width:80px; padding:2px; text-align:right;">`;
 
   actionTd.innerHTML = `
     <button class="btn success" style="padding:4px 8px; font-size:12px; background-color:#28a745; color:white; margin-right:4px;" onclick="saveRowInlineQuery('${acctKey}','${id}',this)"><i class="ti ti-check"></i> 儲存</button>
@@ -1685,6 +1697,26 @@ async function saveRowInlineQuery(acctKey, id, btn) {
   }
 }
   
+// ─── 查詢分頁專用刪除函式 ───────────────────────────────────────────────
+async function removeEntryFromQuery(acctKey, id) {
+  if (!confirm('確定要刪除這筆資料？此動作無法復原。')) return;
+  setStatus('loading', '刪除中…');
+  try {
+    const res = await gsReq({ action: 'delete', id: String(id) });
+    if (res.error) throw new Error(res.error);
+    // 同步從 db 與 currentAddedEntries 中移除
+    db[acctKey] = db[acctKey].filter(e => e.id !== id);
+    if (currentAddedEntries[acctKey]) {
+      currentAddedEntries[acctKey] = currentAddedEntries[acctKey].filter(e => e.id !== id);
+    }
+    setStatus('ok', '已刪除');
+    if (typeof runQuery === 'function') runQuery();
+  } catch(e) {
+    alert('刪除失敗：' + e.message);
+    setStatus('err', '刪除失敗');
+  }
+}
+
 // ─── 修正：網頁初始化守衛 (解決網頁重新整理資料遺失的問題) ──────────────
 window.onload = async function() {
   const isAuthed = sessionStorage.getItem('beiji_logged_in');
