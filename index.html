@@ -605,7 +605,7 @@ tr:hover td {
 
       <div class="q-field-keyword">
         <label class="q-label-style">關鍵字搜尋</label>
-        <input type="text" id="q-keyword" class="q-input-style" placeholder="科目／商家 / 摘要關鍵字"/>
+        <input type="text" id="q-keyword" class="q-input-style" placeholder="科目 / 摘要關鍵字"/>
       </div>
 
       <div class="q-field-btn">
@@ -628,7 +628,7 @@ tr:hover td {
           <tr style="background: var(--paper-dark, #f5f5f5); text-align: left; border-bottom: 1px solid var(--paper-dark);">
             <th style="padding: 10px 8px; color: var(--ink-soft); font-weight: 600; white-space: nowrap;">日期</th>
             <th style="padding: 10px 8px; color: var(--ink-soft); font-weight: 600; white-space: nowrap;">帳戶</th>
-            <th style="padding: 10px 8px; color: var(--ink-soft); font-weight: 600; white-space: nowrap;">科目／商家</th>
+            <th style="padding: 10px 8px; color: var(--ink-soft); font-weight: 600; white-space: nowrap;">科目</th>
             <th style="padding: 10px 8px; color: var(--ink-soft); font-weight: 600; white-space: nowrap;">摘要</th>
             <th style="padding: 10px 8px; color: var(--ink-soft); font-weight: 600; white-space: nowrap;">類型</th>
             <th style="padding: 10px 8px; text-align: right; color: var(--ink-soft); font-weight: 600; white-space: nowrap;">金額</th>
@@ -645,7 +645,58 @@ tr:hover td {
 
 <script>
 // ── Google Sheets Config ─────────────────────────────────
-const GS_URL = 'https://script.google.com/macros/s/AKfycbwquerillXjY2Pnjs5srBFTpBAa-NHQH_7v-RhE1mkbqFQvdmG8oD-dlg6RSpr5RHoi/exec';
+const GS_URL = 'https://script.google.com/macros/s/AKfycbxf0wzvpc1EZ6eAygZJR17QdzWcEY8ewbWHzeuZO2iN9QNP0RxZwe1bv4BZhKAwfXc/exec';
+
+// ── 科目清單（從 Google 試算表動態載入）─────────────────────
+// 試算表需有「科目清單」工作表，A欄=帳戶標籤、B欄=科目名稱
+// 帳戶標籤對應：零用金（採購）/ 農會儲簿 / 台企儲簿 / 基金會
+let SUBJ_OPTIONS = {
+  lingyon: ['水電燃氣費','郵電費','玄天上帝聖誕','玉皇上帝萬壽','契子過限','祭祀費','祭典活動費','廟務公務費','手續費'],
+  nonghu:  ['利息收入','信徒捐款收入','活動收入','補助款收','廟務借款'],
+  taiqiye: ['利息收入','信徒捐款收入','活動收入','補助款收','廟務借款'],
+  jijin:   ['利息收入','信徒捐款收入','活動收入','補助款收','廟務借款'],
+};
+
+async function loadSubjects() {
+  try {
+    const res = await gsReq({ action: 'getSubjects' });
+    if (res.error || !res.subjects) return; // 失敗時保留預設清單
+    const map = res.subjects; // { '零用金（採購）': [...], '農會儲簿': [...], ... }
+    // 將試算表帳戶標籤對應到前端 acct key
+    const keyMap = {
+      '零用金（採購）': 'lingyon',
+      '農會儲簿':       'nonghu',
+      '台企儲簿':       'taiqiye',
+      '基金會':         'jijin',
+    };
+    Object.entries(keyMap).forEach(([label, key]) => {
+      if (map[label] && map[label].length > 0) {
+        SUBJ_OPTIONS[key] = map[label];
+      }
+    });
+    // 載入後重刷所有已渲染的科目選單
+    refreshAllSubjSelects();
+  } catch(e) {
+    console.warn('科目清單載入失敗，使用預設值:', e.message);
+  }
+}
+
+function buildSubjSelect(acct) {
+  const opts = (SUBJ_OPTIONS[acct] || []).map(o => `<option value="${o}">${o}</option>`).join('');
+  return `<select id="${acct}-subj" data-subj-acct="${acct}" style="height:34px;padding:0 8px;border:1px solid var(--paper-dark);border-radius:var(--radius);background:var(--paper);color:var(--ink);font-size:13px;font-family:var(--sans);width:100%;">${opts}</select>`;
+}
+
+function refreshAllSubjSelects() {
+  // 重刷畫面上所有已存在的科目選單（不重建整個 tab，避免清空輸入中的資料）
+  document.querySelectorAll('select[data-subj-acct]').forEach(sel => {
+    const acct = sel.getAttribute('data-subj-acct');
+    const cur = sel.value;
+    const opts = (SUBJ_OPTIONS[acct] || []).map(o =>
+      `<option value="${o}"${o === cur ? ' selected' : ''}>${o}</option>`
+    ).join('');
+    sel.innerHTML = opts;
+  });
+}
 var p = null; // 👈 【大補帖】直接在全域宣告 p
 // ─── 【魔王終結者】強行宣告 syncDate，防止系統崩潰中斷 ───
 if (typeof syncDate !== 'function') {
@@ -942,7 +993,7 @@ function buildAcctTab(acct){
       <div class="panel-body">
         <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));">
           <div class="fg" style="min-width:170px"><label>日期</label>${buildRocDatePicker(acct)}</div>
-          <div class="fg" style="min-width:120px"><label>科目／商家</label><input type="text" id="${acct}-subj" placeholder="農會利息、全聯"/></div>
+          <div class="fg" style="min-width:120px"><label>科目</label>${buildSubjSelect(acct)}</div>
           <div class="fg" style="min-width:120px"><label>摘要</label><input type="text" id="${acct}-note" placeholder="詳細說明" onkeydown="if(event.key==='Enter') addEntry('${acct}')"/></div>
           <div class="fg"><label>類型</label>
             <select id="${acct}-type">
@@ -962,7 +1013,7 @@ function buildAcctTab(acct){
         <table>
           <thead><tr>
             <th style="width:85px">日期</th>
-            <th style="width:110px">科目／商家</th>
+            <th style="width:110px">科目</th>
             <th>摘要</th>
             <th style="width:105px">${m.incLabel}</th>
             <th style="width:105px">${m.expLabel}</th>
@@ -1053,16 +1104,11 @@ function renderAcct(acct){
     
     let actionButtons = '';
     if (role === '管理員') {
-      actionButtons = `
-        <button class="btn primary" style="padding:4px 8px; font-size:12px; margin-right:4px;" onclick="editRowInline('${acct}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>
-        <button class="btn danger" style="padding:4px 8px; font-size:12px;" onclick="removeEntry('${acct}','${r.id}')"><i class="ti ti-trash"></i> 刪除</button>
-      `;
+      actionButtons = `<button class="btn primary" style="padding:4px 8px;font-size:12px;margin-right:4px;" onclick="editRowInline('${acct}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button><button style="padding:4px 8px;font-size:12px;background:#C0392B;color:#fff;border:1px solid #C0392B;border-radius:4px;cursor:pointer;" onclick="removeEntry('${acct}','${r.id}')"><i class="ti ti-trash"></i> 刪除</button>`;
     } else if (role === '會計') {
-      actionButtons = `
-        <button class="btn primary" style="padding:4px 8px; font-size:12px;" onclick="editRowInline('${acct}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>
-      `;
+      actionButtons = `<button class="btn primary" style="padding:4px 8px;font-size:12px;" onclick="editRowInline('${acct}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>`;
     } else {
-      actionButtons = `<span class="mu">無權限</span>`;
+      actionButtons = '';
     }
 
     // 💡 調整表格 TD 結構，將原本最後一格的多餘資訊移除
@@ -1252,16 +1298,27 @@ function runQuery(){
   
   const totalIn  = results.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
   const totalOut = results.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
-  
+
+  // 產生篩選條件說明文字
+  const dateFrom = document.getElementById('q-date-from').value;
+  const dateTo   = document.getElementById('q-date-to').value;
+  const keyword  = document.getElementById('q-keyword').value.trim();
+  const acctFilter = document.getElementById('q-acct').value;
+  let filterDesc = '';
+  if (dateFrom || dateTo) filterDesc += `${dateFrom||'?'} ～ ${dateTo||'?'}`;
+  if (acctFilter) filterDesc += (filterDesc ? '　' : '') + acctFilter;
+  if (keyword)    filterDesc += (filterDesc ? '　' : '') + `「${keyword}」`;
+  const labelSuffix = filterDesc ? `<span style="font-size:10px;color:var(--ink-soft);font-weight:400;display:block;margin-top:2px;">${filterDesc}</span>` : '';
+
   document.getElementById('query-count').textContent = `共 ${results.length} 筆`;
   const statsEl = document.getElementById('query-stats');
   if (statsEl) {
     if (results.length > 0) {
       statsEl.style.display = 'grid';
       statsEl.innerHTML = `
-        <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>收入合計</div><div class="sum-value g">${fmtMoney(totalIn)}</div></div>
-        <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>支出合計</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
-        <div class="sum-card hl"><div class="sum-label"><i class="ti ti-calculator"></i>收支差額</div><div class="sum-value">${fmtMoney(totalIn - totalOut)}</div></div>`;
+        <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>收入合計${labelSuffix}</div><div class="sum-value g">${fmtMoney(totalIn)}</div></div>
+        <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>支出合計${labelSuffix}</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
+        <div class="sum-card hl"><div class="sum-label"><i class="ti ti-calculator"></i>收支差額${labelSuffix}</div><div class="sum-value">${fmtMoney(totalIn - totalOut)}</div></div>`;
     } else { 
       statsEl.style.display = 'none'; 
     }
@@ -1280,14 +1337,11 @@ function runQuery(){
     const typeTag = t => t === 'income' ? '<span class="tag in">收入</span>' : t === 'expense' ? '<span class="tag out">支出</span>' : '<span class="tag prev">結存</span>';
     
     tbody.innerHTML = results.map(r => {
-      // 💡 根據權限判斷是否要餵給管理員與會計「編輯」按鈕
       let actionButtons = '';
       if (role === '管理員') {
-        actionButtons = `
-          <button class="btn primary" style="padding:4px 8px; font-size:12px; margin-right:4px;" onclick="editRowInlineQuery('${r.acctKey}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>
-          <button class="btn danger" style="padding:4px 8px; font-size:12px; background:#C0392B; color:#fff; border-color:#C0392B;" onclick="removeEntryFromQuery('${r.acctKey}','${r.id}')"><i class="ti ti-trash"></i> 刪除</button>`;
+        actionButtons = `<button class="btn primary" style="padding:4px 8px;font-size:12px;margin-right:4px;" onclick="editRowInlineQuery('${r.acctKey}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button><button style="padding:4px 8px;font-size:12px;background:#C0392B;color:#fff;border:1px solid #C0392B;border-radius:4px;cursor:pointer;" onclick="removeEntryFromQuery('${r.acctKey}','${r.id}')"><i class="ti ti-trash"></i> 刪除</button>`;
       } else if (role === '會計') {
-        actionButtons = `<button class="btn primary" style="padding:4px 8px; font-size:12px;" onclick="editRowInlineQuery('${r.acctKey}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>`;
+        actionButtons = `<button class="btn primary" style="padding:4px 8px;font-size:12px;" onclick="editRowInlineQuery('${r.acctKey}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>`;
       } else {
         actionButtons = `<span class="mu">—</span>`;
       }
@@ -1515,36 +1569,23 @@ function applyRolePermissions() {
   console.log("正在套用權限，當前角色為:", role);
   
   const allTabs = document.querySelectorAll('.tabs-bar .tab-btn');
-  allTabs.forEach(btn => btn.style.display = ''); // 先全部還原顯示
-  
-  let styleEl = document.getElementById('role-style-override');
-  if (styleEl) styleEl.innerHTML = ''; // 清除舊樣式
+  allTabs.forEach(btn => btn.style.display = ''); // 先全部還原
 
   if (role === '一般') {
-    // 一般權限：只保留查詢(query)與月報表(report)
+    // 訪客：只開放查詢分頁，隱藏其他所有分頁與新增表單
     allTabs.forEach(btn => {
-      const onclickAttr = btn.getAttribute('onclick') || '';
-      if (!onclickAttr.includes('query') && !onclickAttr.includes('report')) {
-        btn.style.display = 'none'; 
-      }
+      const tab = btn.getAttribute('data-tab') || '';
+      if (tab !== 'query') btn.style.display = 'none';
     });
-    injectTemplateStyles(`
-      .btn.danger, #fx-add-btn, .panel-hdr .btn.primary, .form-grid { display: none !important; }
-    `);
-    
+    injectTemplateStyles('.panel-body, .panel-hdr .btn { display: none !important; }');
+
   } else if (role === '會計') {
-    // 會計權限：不能刪除資料
-    injectTemplateStyles(`
-      .btn.danger { display: none !important; } 
-    `);
-    
+    // 會計：可進所有分頁、可編輯，但不能刪除
+    injectTemplateStyles('');
+
   } else if (role === '管理員') {
-    // 💡 溫和無害版：管理員全功能開放，我們不硬性去改 main 或 table 的 display 樣式，
-    // 只確保危險的刪除按鈕跟記帳面板能順利露出來，畫面就絕對不會歪掉了！
-    injectTemplateStyles(`
-      .btn.danger { display: inline-flex !important; }
-    `);
-    allTabs.forEach(btn => btn.style.display = ''); 
+    // 管理員：全功能開放
+    injectTemplateStyles('');
   }
 }
 
@@ -1567,23 +1608,22 @@ async function initializeSystem() {
   // 2. 載入定存快取 (如果原本系統有這個函式)
   if (typeof loadFixed === 'function') loadFixed(); 
   
-  // 3. 【核心修正】同部雲端帳簿明細，並強制使用 await 等待它完全下載完畢
+  // 3. 【核心修正】同步雲端帳簿明細 + 科目清單（並行執行加快速度）
   if (typeof loadFromGS === 'function') {
-    setStatus('loading', '雲端資料同步中...'); // 如果系統有狀態列，顯示同步中
+    setStatus('loading', '雲端資料同步中...');
     
-    // 💡 關鍵：必須等 loadFromGS() 真正把所有分頁資料從 GAS 抓回來並存入 db
-    const success = await loadFromGS(); 
+    // 科目清單與帳務資料並行載入
+    const [success] = await Promise.all([
+      loadFromGS(),
+      loadSubjects(),
+    ]);
     
     if (success) {
       setStatus('ok', '同步完成');
-      
-      // 4. 確保資料都進到 db 後，再切換到查詢分頁
       switchTab('query');
-      
-      // 5. 強制觸發一次預設查詢，把剛剛從雲端抓下來的歷史資料統統畫出來！
       if (typeof runQuery === 'function') {
         console.log("雲端資料下載完畢，開始預設查詢...");
-        runQuery(); 
+        runQuery();
       }
     } else {
       setStatus('err', '雲端同步失敗');
@@ -1697,7 +1737,7 @@ async function saveRowInlineQuery(acctKey, id, btn) {
   }
 }
   
-// ─── 查詢分頁專用刪除函式 ───────────────────────────────────────────────
+// ─── 查詢分頁專用刪除函式（管理員專屬）────────────────────────────────
 async function removeEntryFromQuery(acctKey, id) {
   if (!confirm('確定要刪除這筆資料？此動作無法復原。')) return;
   setStatus('loading', '刪除中…');
