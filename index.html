@@ -1529,6 +1529,58 @@ function exportExcel(){
   XLSX.writeFile(wb,'九肉北極殿帳務_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
+  async function submitLogin() {
+  const user = document.getElementById('login-user').value;
+  const pwd = document.getElementById('login-pwd').value;
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-err');
+
+  if (!user || !pwd) {
+    err.innerText = "請輸入帳號與密碼";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2 animate-spin"></i> 驗證中...';
+  err.innerText = "";
+
+  try {
+    // 呼叫後端 GAS
+    const res = await gsReq({ action: 'login', username: user, password: pwd });
+
+    if (res.success) {
+      // 1. 驗證成功，移除登入遮罩，讓後方主畫面露出來
+      document.getElementById('login-overlay').style.display = 'none';
+      
+      // 2. 【大補帖】把所有可能用到的權限儲存方式一次塞滿，讓原本系統絕對讀得到！
+      window.userRole = res.role;                                // 記憶體儲存
+      sessionStorage.setItem('beiji_user_role', res.role);       // 新版網頁儲存
+      sessionStorage.setItem('userRole', res.role);             // 舊版網頁儲存
+      
+      console.log("登入成功，角色為:", res.role);
+
+      // 3. 強制通知系統「立刻重新檢查並套用權限」
+      if (typeof applyRolePermissions === 'function') {
+        applyRolePermissions();
+      }
+      
+      // 4. 如果系統有需要重新載入或初始化的動作，就在這裡順便執行
+      if (typeof initializeSystem === 'function') {
+        initializeSystem();
+      }
+    } else {
+      err.innerText = res.message || "帳號或密碼錯誤";
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-login"></i> 安全登入';
+    }
+  } catch (e) {
+    console.error(e);
+    err.innerText = "連線異常，請確認 GAS 是否已發布";
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-login"></i> 安全登入';
+  }
+}
+
 // ─── 修改後的權限套用函式 ─────────────────────────────────────
 function applyRolePermissions() {
   const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
