@@ -1528,8 +1528,7 @@ function exportExcel(){
   if(wb.SheetNames.length===0){ alert('沒有資料可匯出'); return; }
   XLSX.writeFile(wb,'九肉北極殿帳務_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
-
-  async function submitLogin() {
+async function submitLogin() {
   const user = document.getElementById('login-user').value;
   const pwd = document.getElementById('login-pwd').value;
   const btn = document.getElementById('login-btn');
@@ -1580,7 +1579,6 @@ function exportExcel(){
     btn.innerHTML = '<i class="ti ti-login"></i> 安全登入';
   }
 }
-
 // ─── 修改後的權限套用函式 ─────────────────────────────────────
 function applyRolePermissions() {
   const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
