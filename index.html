@@ -1213,153 +1213,6 @@ function monthStats(acct) {
   return ms;
 }
 
-// ─── 新增：實作 Excel 匯出功能 ─────────────────────────────────────
-function exportExcel() {
-  if (!XLSX) { alert('Excel 匯出元件尚未載入完成'); return; }
-  const wb = XLSX.utils.book_new();
-  ACCT_KEYS.forEach(key => {
-    const data = db[key].map(e => ({
-      '日期': e.date,
-      '科目/商家': e.subj,
-      '摘要': e.note,
-      '類型': TYPE_MAP[e.type] || e.type,
-      '金額': e.amount
-    }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    XLSX.utils.book_append_sheet(wb, ws, ACCT_META[key].label);
-  });
-  XLSX.writeFile(wb, `九肉北極殿帳務明細表_${new Date().toISOString().slice(0,10)}.xlsx`);
-}
-// ── Query ─────────────────────────────────────────────────
-// ─── 修正後的查詢函式：預設自動鎖定當月資料 ───
-function runQuery(){
-  let dateFromEl = document.getElementById('q-date-from');
-  let dateToEl = document.getElementById('q-date-to');
-  
-  if (dateFromEl && dateToEl && !dateFromEl.value && !dateToEl.value) {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0'); 
-    const today = String(now.getDate()).padStart(2, '0');      
-    
-    dateFromEl.value = `${year}-${month}-01`;
-    dateToEl.value = `${year}-${month}-${today}`;
-  }
-
-  const acctFilter = document.getElementById('q-acct').value;
-  const typeFilter = document.getElementById('q-type').value;
-  
-  // 統一將前端日期欄位清洗成標準橫線格式
-  const dateFrom = dateFromEl.value.trim().replace(/[\/\.]/g, '-');
-  const dateTo   = dateToEl.value.trim().replace(/[\/\.]/g, '-');
-  const keyword  = document.getElementById('q-keyword').value.trim().toLowerCase();
-  
-  let results = [];
-  if (typeof ACCT_KEYS !== 'undefined' && typeof db !== 'undefined') {
-    ACCT_KEYS.forEach(acct => {
-      if (!db[acct]) return; 
-      db[acct].forEach(e => {
-        const acctLabel = ACCT_META[acct].label;
-        if (acctFilter && acctLabel !== acctFilter) return;
-        if (typeFilter && TYPE_MAP[e.type] !== typeFilter) return;
-        
-        // 將斜線 / 和 點點 . 通通轉換成橫線 -
-        let rawDate = String(e.date || '').trim().replace(/[\/\.]/g, '-');
-        if (rawDate.includes('T')) {
-          rawDate = rawDate.split('T')[0];
-        } else {
-          rawDate = rawDate.substring(0, 10);
-        }
-        
-        let compareDate = rawDate; 
-        
-        // 完美兼容民國 115 年
-        if (rawDate.startsWith('115-')) {
-          compareDate = '2026' + rawDate.substring(3);
-        }
-        
-        // 使用完全對齊的西元橫線時間軸進行過濾
-        if (dateFrom && compareDate < dateFrom) return;
-        if (dateTo && compareDate > dateTo) return;
-        
-        if (keyword) { 
-          const h = ((e.subj || '') + (e.note || '')).toLowerCase(); 
-          if (!h.includes(keyword)) return; 
-        }
-        
-        // 💡 這裡把物件的 acct 英文代碼（如 lingyon）順便傳下去，等一下編輯按鈕需要用到
-        results.push({ ...e, date: rawDate, acctLabel, acctKey: acct });
-      });
-    });
-  }
-  
-  // 依日期排序
-  results.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-  
-  const totalIn  = results.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
-  const totalOut = results.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
-
-  // 產生篩選條件說明文字
-  const dateFromDisp = document.getElementById('q-date-from').value;
-  const dateToDisp   = document.getElementById('q-date-to').value;
-  const keywordDisp  = document.getElementById('q-keyword').value.trim();
-  const acctFilter2  = document.getElementById('q-acct').value;
-  let filterDesc = '';
-  if (dateFromDisp || dateToDisp) filterDesc += `${dateFromDisp||'?'} ～ ${dateToDisp||'?'}`;
-  if (acctFilter2) filterDesc += (filterDesc ? '　' : '') + acctFilter2;
-  if (keywordDisp) filterDesc += (filterDesc ? '　' : '') + `「${keywordDisp}」`;
-  const labelSuffix = filterDesc ? `<span style="font-size:10px;color:var(--ink-soft);font-weight:400;display:block;margin-top:2px;">${filterDesc}</span>` : '';
-
-  document.getElementById('query-count').textContent = `共 ${results.length} 筆`;
-  const statsEl = document.getElementById('query-stats');
-  if (statsEl) {
-    if (results.length > 0) {
-      statsEl.style.display = 'grid';
-      statsEl.innerHTML = `
-        <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>收入合計${labelSuffix}</div><div class="sum-value g">${fmtMoney(totalIn)}</div></div>
-        <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>支出合計${labelSuffix}</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
-        <div class="sum-card hl"><div class="sum-label"><i class="ti ti-calculator"></i>收支差額${labelSuffix}</div><div class="sum-value">${fmtMoney(totalIn - totalOut)}</div></div>`;
-    } else { 
-      statsEl.style.display = 'none'; 
-    }
-  }
-  
-  const tbody = document.getElementById('query-tbody');
-  if (tbody) {
-    if (results.length === 0) { 
-      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="ti ti-search"></i><p>查無符合資料</p></div></td></tr>`; 
-      return; 
-    }
-    
-    // 💡 取得當前登入使用者的職稱權限
-    const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
-
-    const typeTag = t => t === 'income' ? '<span class="tag in">收入</span>' : t === 'expense' ? '<span class="tag out">支出</span>' : '<span class="tag prev">結存</span>';
-    
-    tbody.innerHTML = results.map(r => {
-      let actionButtons = '';
-      if (role === '管理員') {
-        actionButtons = `<button class="btn primary" style="padding:4px 8px;font-size:12px;margin-right:4px;" onclick="editRowInlineQuery('${r.acctKey}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button><button style="padding:4px 8px;font-size:12px;background:#C0392B;color:#fff;border:1px solid #C0392B;border-radius:4px;cursor:pointer;" onclick="removeEntryFromQuery('${r.acctKey}','${r.id}')"><i class="ti ti-trash"></i> 刪除</button>`;
-      } else if (role === '會計') {
-        actionButtons = `<button class="btn primary" style="padding:4px 8px;font-size:12px;" onclick="editRowInlineQuery('${r.acctKey}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>`;
-      } else {
-        actionButtons = `<span class="mu">—</span>`;
-      }
-
-      // 💡 幫 <tr> 加上動態 ID (qrow-帳戶-明細ID)，並幫各個要編輯的欄位加上專屬 class
-      return `
-        <tr class="dr" id="qrow-${r.acctKey}-${r.id}">
-          <td class="qcell-date" style="white-space:nowrap;">${r.date}</td>
-          <td class="mu" style="white-space:nowrap;">${r.acctLabel}</td>
-          <td class="qcell-subj" style="white-space:nowrap;">${r.subj || ''}</td>
-          <td class="qcell-note mu" style="white-space:nowrap;">${r.note || '—'}</td>
-          <td style="white-space:nowrap;">${typeTag(r.type)}</td>
-          <td class="qcell-amount" style="text-align: right; white-space:nowrap;"><span class="${r.type === 'income' ? 'ni' : r.type === 'expense' ? 'no' : 'mu'}">${fmtMoney(r.amount)}</span></td>
-          <td style="white-space: nowrap; text-align: center;">${actionButtons}</td>
-        </tr>`;
-    }).join('');
-  }
-}
 
 
 // ── Excel Export（升級修正版：含黑白優化、基金會隔離、等寬簽名、跨頁重複標頭） ─────────────
@@ -1416,7 +1269,7 @@ function exportExcel(){
     rows.push(['','','','','','','','']); r++;
 
     // R3: 欄標題（擴展為 8 欄，摘要合併兩欄放大空間）
-    rows.push(['日期','科目／商家','摘要說明','','類型','收入金額','支出金額','結存餘額']);
+    rows.push(['日期','科目','摘要說明','','類型','收入金額','支出金額','結存餘額']);
     merges.push({s:{r,c:2},e:{r,c:3}}); r++;
 
     // ══ 明細區 ══════════════════════════════════════════
@@ -1528,6 +1381,8 @@ function exportExcel(){
   if(wb.SheetNames.length===0){ alert('沒有資料可匯出'); return; }
   XLSX.writeFile(wb,'九肉北極殿帳務_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
+
+  
 async function submitLogin() {
   const user = document.getElementById('login-user').value;
   const pwd = document.getElementById('login-pwd').value;
