@@ -419,7 +419,7 @@ tr:hover td {
   <div class="site-logo"><i class="ti ti-building-temple"></i><span class="logo-wrap"><span class="logo-main">九肉北極殿</span><span class="logo-sub">帳務管理系統</span></span></div>
   <div style="display:flex;align-items:center;gap:8px;">
     <span class="sync-status loading" id="sync-status"><i class="ti ti-cloud spin"></i>連線中…</span>
-    <button class="btn ghost" onclick="exportExcel()"><i class="ti ti-file-spreadsheet"></i>匯出 Excel</button>
+    <button class="btn ghost" onclick="exportPDF()"><i class="ti ti-file-text"></i>匯出／列印 PDF</button>
   </div>
 </header>
 
@@ -1346,20 +1346,18 @@ function runQuery(){
 }
 
 
-// ── Excel Export（升級修正版：含黑白優化、基金會隔離、等寬簽名、跨頁重複標頭） ─────────────
-function exportExcel(){
-  const wb = XLSX.utils.book_new();
+// ── 一鍵列印與匯出 PDF（終極優化版：黑白會計風、等寬簽名、自動跨頁重複標頭） ─────────────
+function exportPDF() {
   const ACCT_LABELS = {nonghu:'農會儲簿', taiqiye:'台企儲簿', lingyon:'零用金（採購）', jijin:'基金會'};
   const RA = ['nonghu', 'taiqiye', 'lingyon'];
   
-  // 💡 讀取目前網頁篩選介面上的帳戶選單選取值（請依您實際選單 id 調整，此處假設為 'q-acct'）
+  // 1. 讀取目前網頁選取的帳戶
   const qAcctSelect = document.getElementById('q-acct') ? document.getElementById('q-acct').value : '';
-
   const A = RA.reduce((s,a)=>s+getAcctBal(a),0);
   const fixed = getFixedLatest();
   const grand = A + Object.values(fixed).reduce((s,v)=>s+v,0);
 
-  // 從資料推算期間
+  // 計算期間
   let allDates=[];
   ACCT_KEYS.forEach(a=>{ db[a].forEach(e=>{ if(e.date) allDates.push(e.date); }); });
   allDates.sort();
@@ -1367,150 +1365,278 @@ function exportExcel(){
     ? (allDates[0].slice(0,7) + (allDates[0].slice(0,7)!==allDates[allDates.length-1].slice(0,7) ? ' ～ '+allDates[allDates.length-1].slice(0,7) : ''))
     : '';
 
-  ACCT_KEYS.forEach(acct=>{
+  // 2. 開始動態建構專門用來列印的 HTML 內容與精細 CSS 樣式
+  let printContent = `
+    <html>
+    <head>
+      <title>北極殿 帳務明細報表</title>
+      <style>
+        /* 🖨️ 列印防爆核心防線：強鎖 A4 縱向、黑白印刷模式 */
+        @page {
+          size: A4 portrait;
+          margin: 15mm 12mm;
+        }
+        body {
+          font-family: "Microsoft JhengHei", "Segoe UI", sans-serif;
+          color: #000000;
+          background: #ffffff;
+          margin: 0;
+          padding: 0;
+          font-size: 11pt;
+        }
+        .report-page {
+          page-break-after: always; /* 每個帳戶獨立分頁 */
+        }
+        .report-page:last-child {
+          page-break-after: avoid;
+        }
+        
+        /* 📝 頂部大標題區 */
+        .title-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 5px;
+        }
+        .main-title {
+          font-size: 18pt;
+          font-weight: bold;
+          text-align: center;
+          padding-bottom: 8px;
+        }
+        .subtitle-row td {
+          font-size: 10.5pt;
+          color: #333333;
+          padding-bottom: 12px;
+        }
+
+        /* 📊 核心明細表格與經典黑白會計線條 */
+        .data-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 20px;
+        }
+        /* 💡 跨頁自動重複欄位標頭魔法 */
+        thead {
+          display: table-header-group; 
+        }
+        .data-table th {
+          border-top: 2px solid #000000;
+          border-bottom: 2px solid #000000;
+          border-left: 1px solid #000000;
+          border-right: 1px solid #000000;
+          padding: 8px 4px;
+          font-size: 10.5pt;
+          font-weight: bold;
+          background-color: #ffffff;
+        }
+        .data-table td {
+          border: 1px solid #000000;
+          padding: 7px 6px;
+          font-size: 10pt;
+          vertical-align: middle;
+        }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        
+        /* 💰 本月合計：標準會計雙底線 */
+        .total-row td {
+          font-weight: bold;
+          border-top: 1px solid #000000;
+          border-bottom: 4px double #000000; /* 經典雙底線 */
+        }
+
+        /* 🔒 定存與特殊科目區 */
+        .fixed-section {
+          width: 100%;
+          margin-bottom: 25px;
+          font-size: 10.5pt;
+        }
+        .fixed-table {
+          width: 60%;
+          border-collapse: collapse;
+          margin-top: 5px;
+        }
+        .fixed-table td {
+          padding: 5px;
+          border: none;
+        }
+        .grand-total {
+          font-size: 11pt;
+          font-weight: bold;
+          margin-top: 10px;
+          padding: 8px 0;
+        }
+
+        /* ✍️ 核心視覺：4格完全等寬、乾淨方形手寫簽名框 */
+        .sign-container {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 30px;
+          page-break-inside: avoid; /* 防止簽名欄被攔腰截斷切頁 */
+        }
+        /* 2欄組合平分，4個方框剛好各佔 25% 達到絕對對稱 */
+        .sign-box {
+          width: 25%;
+          border: 1px solid #000000;
+          text-align: center;
+          vertical-align: top;
+          padding: 0;
+        }
+        .sign-title {
+          font-size: 11pt;
+          font-weight: bold;
+          padding: 6px 0;
+          border-bottom: 1px solid #000000;
+        }
+        .sign-space {
+          height: 55px; /* 🚀 完美留出 55px 乾淨空白供主委、監委蓋章手寫 */
+        }
+        .footer-note {
+          font-size: 9pt;
+          font-style: italic;
+          margin-top: 12px;
+        }
+      </style>
+    </head>
+    <body>
+  `;
+
+  // 3. 逐一巡迴帳戶資料產出頁面
+  ACCT_KEYS.forEach(acct => {
     const entries = db[acct];
-    if(entries.length===0) return;
+    if (entries.length === 0) return;
     const acctName = ACCT_LABELS[acct];
 
-    /* 🛡️ 1. 基金會智慧隔離防線 */
+    /* 🛡️ 基金會隔離防線 */
     if (qAcctSelect === 'jijin' || qAcctSelect === '基金會') {
-      // 情況 A：如果目前選定查詢基金會，則「非基金會」的帳戶全部跳過不產出
       if (acct !== 'jijin') return;
     } else {
-      // 情況 B：常態下（選全部或查主帳戶），「基金會」一律強制封鎖排除
       if (acct === 'jijin') return;
     }
 
-    const rows=[];
-    const merges=[];
-    let r=0;  // current row index
+    // 決定簽名職稱
+    let isJijin = (acct === 'jijin');
+    let t1 = isJijin ? '基金會董事長' : '主 委 蓋 章';
+    let t2 = isJijin ? '基金會監事' : '監 委 蓋 章';
+    let t3 = isJijin ? '基金會出納' : '出 納 人 員';
+    let t4 = isJijin ? '基金會會計' : '會 計 人 員';
 
-    // ══ 抬頭區（擴展為 A:H 共 8 欄，以利 4 個簽名欄完美平分） ═════════════════════════
-    // R0: 主標題（合併 A:H）
-    rows.push(['北極殿 帳務明細報表','','','','','','','']);
-    merges.push({s:{r,c:0},e:{r,c:7}}); r++;
+    printContent += `
+      <div class="report-page">
+        <table class="title-table">
+          <tr><td class="main-title">北極殿 帳務明細報表</td></tr>
+          <tr class="subtitle-row">
+            <td>
+              <table style="width:100%;">
+                <tr>
+                  <td style="width:30%;"><b>帳戶：</b>${acctName}</td>
+                  <td style="width:40%; text-align:center;"><b>期間：</b>${periodStr}</td>
+                  <td style="width:30%; text-align:right;"><b>製表日：</b>${new Date().toLocaleDateString('zh-TW')}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
 
-    // R1: 副標題
-    rows.push([`帳戶：${acctName}`, '', `期間：${periodStr}`, '', '', '', '製表日：'+new Date().toLocaleDateString('zh-TW'), '']);
-    merges.push({s:{r,c:0},e:{r,c:1}});
-    merges.push({s:{r,c:2},e:{r,c:4}});
-    merges.push({s:{r,c:6},e:{r,c:7}}); r++;
+       <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 12%;">日期</th>
+              <th style="width: 18%;">科目</th>
+              <th style="width: 42%;">摘要說明</th>
+              <th style="width: 14%;">收入金額</th>
+              <th style="width: 14%;">支出金額</th>
+              <th style="width: 16%;">結存餘額</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
 
-    // R2: 空行
-    rows.push(['','','','','','','','']); r++;
+    let running = 0;
+    entries.forEach(e => {
+      let inc = '', exp = '';
+      if (e.type === 'prev') { running = e.amount; inc = e.amount; }
+      else if (e.type === 'income') { running += e.amount; inc = e.amount; }
+      else { running -= e.amount; exp = e.amount; }
 
-    // R3: 欄標題（擴展為 8 欄，摘要合併兩欄放大空間）
-    rows.push(['日期','科目／商家','摘要說明','','類型','收入金額','支出金額','結存餘額']);
-    merges.push({s:{r,c:2},e:{r,c:3}}); r++;
-
-    // ══ 明細區 ══════════════════════════════════════════
-    const dataStartRow = r;
-    let running=0;
-    entries.forEach(e=>{
-      let inc='', exp='';
-      if(e.type==='prev'){ running=e.amount; inc=e.amount; }
-      else if(e.type==='income'){ running+=e.amount; inc=e.amount; }
-      else{ running-=e.amount; exp=e.amount; }
-      
-      rows.push([
-        e.date, 
-        e.subj||'', 
-        e.note||'', '', // 合併摘要預留格
-        e.type==='income'?'收入':(e.type==='prev'?'結存':'支出'),
-        inc===''?'':inc, 
-        exp===''?'':exp, 
-        running
-      ]);
-      merges.push({s:{r,c:2},e:{r,c:3}});
-      r++;
+      // 💡 這裡同步拿掉了 <td> 類型 </td> 的那一行
+      printContent += `
+        <tr>
+          <td class="text-center">${e.date || ''}</td>
+          <td>${e.subj || ''}</td>
+          <td>${e.note || ''}</td>
+          <td class="text-right">${inc !== '' ? inc.toLocaleString('zh-TW') : ''}</td>
+          <td class="text-right">${exp !== '' ? exp.toLocaleString('zh-TW') : ''}</td>
+          <td class="text-right">${running.toLocaleString('zh-TW')}</td>
+        </tr>
+      `;
     });
 
-    // ══ 合計列（會計雙底線感） ══════════════════════════════════════════
-    const totalIn  = entries.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
-    const totalOut = entries.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
-    rows.push(['','','合計','','',totalIn,totalOut,running]);
-    merges.push({s:{r,c:2},e:{r,c:3}});
-    r++;
-    rows.push(['','','','','','','','']); r++;  // 空行
+    // 計算合計
+    const totalIn  = entries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
+    const totalOut = entries.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
 
-    // ══ 定存 / 特殊科目（僅三個主帳戶顯示） ══════════════════
-    if(RA.includes(acct)){
-      const noteMap={};
-      db.fixed.forEach(f=>{ if(!noteMap[f.key]) noteMap[f.key]=''; noteMap[f.key]+=(noteMap[f.key]?'、':'')+f.note; });
-      [['B','台企定期（B）'],['C','農會定期（C）'],['D','金龜現金（D）'],['E','信徒借款（E）']].forEach(([k,lbl])=>{
-        rows.push([lbl, noteMap[k]||'', '','', fixed[k], '', '', '']);
-        merges.push({s:{r,c:1},e:{r,c:3}});
-        r++;
+    // 插入合計列 (colspan 從 4 改為 3，因為少了一欄)
+    printContent += `
+          <tr class="total-row">
+            <td colspan="3" class="text-right">本月合計 單位小計：</td>
+            <td class="text-right">${totalIn > 0 ? totalIn.toLocaleString('zh-TW') : ''}</td>
+            <td class="text-right">${totalOut > 0 ? totalOut.toLocaleString('zh-TW') : ''}</td>
+            <td class="text-right">${running.toLocaleString('zh-TW')}</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    // 顯示定期存款部分（僅主帳戶顯示）
+    if (RA.includes(acct)) {
+      const noteMap = {};
+      db.fixed.forEach(f => { 
+        if (!noteMap[f.key]) noteMap[f.key] = ''; 
+        noteMap[f.key] += (noteMap[f.key] ? '、' : '') + f.note; 
       });
-      rows.push(['','','','','','','','']); r++;
-      rows.push([`A＋B＋C＋D＋E＝ ${grand.toLocaleString('zh-TW')}`, '','','','','','','']);
-      merges.push({s:{r,c:0},e:{r,c:7}}); r++;
-      rows.push(['','','','','','','','']); r++;
+
+      printContent += `
+        <div class="fixed-section">
+          <div style="font-weight:bold; border-bottom:1px solid #000; width:150px; padding-bottom:3px;">■ 定期存款與特殊科目</div>
+          <table class="fixed-table">
+            <tr><td>台企定期（B）</td><td>${noteMap['B'] || ''}</td><td class="text-right">${(fixed['B']||0).toLocaleString('zh-TW')}</td></tr>
+            <tr><td>農會定期（C）</td><td>${noteMap['C'] || ''}</td><td class="text-right">${(fixed['C']||0).toLocaleString('zh-TW')}</td></tr>
+            <tr><td>金龜現金（D）</td><td>${noteMap['D'] || ''}</td><td class="text-right">${(fixed['D']||0).toLocaleString('zh-TW')}</td></tr>
+            <tr><td>信徒借款（E）</td><td>${noteMap['E'] || ''}</td><td class="text-right">${(fixed['E']||0).toLocaleString('zh-TW')}</td></tr>
+          </table>
+          <div class="grand-total">A ＋ B ＋ C ＋ D ＋ E ＝ ${grand.toLocaleString('zh-TW')} 元</div>
+        </div>
+      `;
     }
 
-    // ══ ✍️ 2. 簽名欄改為完全等寬（4個職稱各平分2欄，總共8欄完美對稱） ══════════════════
-    rows.push(['','','','','','','','']); r++;
-    
-    // 簽名標題行 (AB、CD、EF、GH 各自精確合併)
-    // 💡 若為基金會專屬頁面，自動變更為基金會對應職稱抬頭
-    let isJijin = (acct === 'jijin');
-    let t1 = isJijin ? '基金會董事長' : '主 委';
-    let t2 = isJijin ? '基金會監事' : '監 委';
-    let t3 = isJijin ? '基金會出納' : '出 納';
-    let t4 = isJijin ? '基金會會計' : '會 計';
-
-    rows.push([t1, '', t2, '', t3, '', t4, '']);
-    merges.push({s:{r,c:0},e:{r,c:1}});
-    merges.push({s:{r,c:2},e:{r,c:3}});
-    merges.push({s:{r,c:4},e:{r,c:5}});
-    merges.push({s:{r,c:6},e:{r,c:7}});
-    r++;
-    
-    // 手寫與蓋章空間行 (空出列高供手寫及蓋大印，取代原本底線模擬，讓方框更乾淨)
-    rows.push(['', '', '', '', '', '', '', '']);
-    merges.push({s:{r,c:0},e:{r,c:1}});
-    merges.push({s:{r,c:2},e:{r,c:3}});
-    merges.push({s:{r,c:4},e:{r,c:5}});
-    merges.push({s:{r,c:6},e:{r,c:7}});
-    const signSpaceRowIndex = r; // 記錄這一列的索引，等等用來拉高格子
-    r++;
-    
-    rows.push(['','','','','','','','']); r++;
-    // 蓋章說明
-    rows.push(['※本報表經權責人員簽章後生效','','','','','','','']);
-    merges.push({s:{r,c:0},e:{r,c:7}}); r++;
-
-    // ══ 建立工作表 ══════════════════════════════════════
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!merges'] = merges;
-    
-    // 調配 1 到 8 欄的完美列寬，確保簽名欄以 2欄+2欄+2欄+2欄 精確等寬平分
-    ws['!cols'] = [{wch:12},{wch:14},{wch:18},{wch:18},{wch:10},{wch:14},{wch:14},{wch:15}];
-
-    // 📐 設定列高規格
-    ws['!rows'] = [];
-    ws['!rows'][0] = {hpt:28};  // 主標題加高
-    ws['!rows'][1] = {hpt:18};  // 副標題
-    ws['!rows'][3] = {hpt:20};  // 欄位標頭列
-    ws['!rows'][signSpaceRowIndex] = {hpt:45}; // 💡 強制將手寫蓋章列拉高，直接撐出優雅的空白大方框！
-
-    /* 🖨️ 3. 專屬列印屬性：強制黑白一頁寬、跨頁自動重複前 4 行標頭 */
-    ws['!pageSetup'] = {
-      orientation: 'portrait',   // 縱向列印
-      paperSize: 9,              // A4 紙張規格代碼
-      fitToWidth: 1,             // 🚀 寬度鎖死在一頁寬，防左右切斷爆頁
-      fitToHeight: 0,            // 高度自動流動折頁
-      blackAndWhite: true        // 鎖定純黑白印刷模式，不失真
-    };
-    
-    // 💡 跨頁重複標頭功能：資料超出一頁時，後續頁面頂部會自動複製前 4 行 (主、副標題與欄位標頭)
-    ws['!printTitles'] = '1:4'; 
-
-    XLSX.utils.book_append_sheet(wb, ws, acctName);
+    // 插入完全等寬 4 格手寫簽名方框
+    printContent += `
+        <table class="sign-container">
+          <tr>
+            <td class="sign-box"><div class="sign-title">${t1}</div><div class="sign-space"></div></td>
+            <td class="sign-box"><div class="sign-title">${t2}</div><div class="sign-space"></div></td>
+            <td class="sign-box"><div class="sign-title">${t3}</div><div class="sign-space"></div></td>
+            <td class="sign-box"><div class="sign-title">${t4}</div><div class="sign-space"></div></td>
+          </tr>
+        </table>
+        <div class="footer-note">※ 本報表經權責人員簽章後始生效力。</div>
+      </div>
+    `;
   });
 
-  if(wb.SheetNames.length===0){ alert('沒有資料可匯出'); return; }
-  XLSX.writeFile(wb,'九肉北極殿帳務_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  printContent += `</body></html>`;
+
+  // 4. 啟動瀏覽器原生印表機視窗（直接另存為 PDF）
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(printContent);
+  printWindow.document.close();
+  
+  // 給瀏覽器一點時間加載樣式後立刻喚醒列印
+  printWindow.setTimeout(function() {
+    printWindow.print();
+    printWindow.close();
+  }, 350);
 }
 
   async function submitLogin() {
