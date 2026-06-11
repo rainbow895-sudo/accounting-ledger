@@ -1516,10 +1516,10 @@ function exportPDF() {
 
     // 決定簽名職稱
     let isJijin = (acct === 'jijin');
-    let t1 = isJijin ? '基金會董事長' : '主 委 蓋 章';
-    let t2 = isJijin ? '基金會監事' : '監 委 蓋 章';
-    let t3 = isJijin ? '基金會出納' : '出 納 人 員';
-    let t4 = isJijin ? '基金會會計' : '會 計 人 員';
+    let t1 = isJijin ? '基金會董事長' : '主 委 ';
+    let t2 = isJijin ? '基金會監事' : '監 委 ';
+    let t3 = isJijin ? '基金會出納' : '出 納 ';
+    let t4 = isJijin ? '基金會會計' : '會 計 ';
 
     printContent += `
       <div class="report-page">
@@ -1620,7 +1620,7 @@ function exportPDF() {
             <td class="sign-box"><div class="sign-title">${t4}</div><div class="sign-space"></div></td>
           </tr>
         </table>
-        <div class="footer-note">※ 本報表經權責人員簽章後始生效力。</div>
+        // <div class="footer-note">※ 本報表經權責人員簽章後始生效力。</div>
       </div>
     `;
   });
@@ -1696,23 +1696,62 @@ function applyRolePermissions() {
   const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
   console.log("正在套用權限，當前角色為:", role);
   
+  // 1. 還原所有分頁按鈕顯示狀態
   const allTabs = document.querySelectorAll('.tabs-bar .tab-btn');
-  allTabs.forEach(btn => btn.style.display = ''); // 先全部還原
+  allTabs.forEach(btn => btn.style.display = '');
 
+  // 2. 還原網頁中所有可能被禁用的輸入框與按鈕（每次切換權限時先重設）
+  document.querySelectorAll('.btn-save, .btn-add, #btn-add, button[type="submit"]').forEach(el => el.removeAttribute('disabled'));
+  
+  // 清除上一次的強制隱藏樣式
+  injectTemplateStyles('');
+
+  // ═══ 情況 A：一般訪客（最高機密防線：只能查，絕不能動） ═════════════════════════════
   if (role === '一般') {
-    // 訪客：只開放查詢分頁，隱藏其他所有分頁與新增表單
+    // 🔒 防線 1：只准保留 'query' (查詢) 分頁，其他分頁一律消失
     allTabs.forEach(btn => {
       const tab = btn.getAttribute('data-tab') || '';
       if (tab !== 'query') btn.style.display = 'none';
     });
-    injectTemplateStyles('.panel-body, .panel-hdr .btn { display: none !important; }');
 
+    // 🔒 防線 2：強制用 CSS 徹底蒸發所有「新增區、表單、儲存按鈕」
+    // 💡 請根據您實際網頁的 class/id 調整，管家把最常見的通通寫進去雙重鎖死！
+    const guestForbiddenStyles = `
+      /* 隱藏任何新增記錄、帳務輸入、明細填寫的區塊 */
+      .input-panel, .form-panel, #input-section, .panel-body,
+      /* 隱藏任何主畫面的「新增」、「儲存」按鈕 */
+      .btn-add, .btn-save, #btn-add, button[type="submit"],
+      /* 隱藏查詢列表裡可能出現的「修改」與「刪除」小圖示按鈕 */
+      .btn-edit, .btn-delete, .action-btns, td .ti-pencil, td .ti-trash 
+      { display: none !important; }
+    `;
+    injectTemplateStyles(guestForbiddenStyles);
+
+    // 🔒 防線 3：JavaScript 實體鎖死（防止懂網頁的人改 CSS 偷按）
+    // 找到畫面上所有的新增與儲存按鈕，直接將它們從功能上 disabled 禁用！
+    setTimeout(() => {
+      document.querySelectorAll('.btn-save, .btn-add, #btn-add, button[type="submit"]').forEach(el => {
+        el.setAttribute('disabled', 'true');
+      });
+    }, 100);
+
+  // ═══ 情況 B：會計人員（唯獨「不能刪除」） ══════════════════════════════════════
   } else if (role === '會計') {
-    // 會計：可進所有分頁、可編輯，但不能刪除
-    injectTemplateStyles('');
+    // 🔒 防線：能進所有分頁，但全面隱藏並禁用所有「刪除」按鈕（防止誤刪歷史大帳）
+    const accForbiddenStyles = `
+      .btn-delete, #btn-delete, td .ti-trash { display: none !important; }
+    `;
+    injectTemplateStyles(accForbiddenStyles);
 
+    setTimeout(() => {
+      document.querySelectorAll('.btn-delete, #btn-delete').forEach(el => {
+        el.setAttribute('disabled', 'true');
+      });
+    }, 100);
+
+  // ═══ 情況 C：管理員（全功能至高無上） ═════════════════════════════════════════
   } else if (role === '管理員') {
-    // 管理員：全功能開放
+    // 什麼都不用鎖，全功能暢通無阻
     injectTemplateStyles('');
   }
 }
