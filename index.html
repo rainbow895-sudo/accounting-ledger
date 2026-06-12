@@ -1068,32 +1068,91 @@ function updateFilter(acct){
 function renderAcct(acct){
   updateFilter(acct);
   
-  // 大倉庫（包含 Google 試算表抓下來的完整歷史流水帳）
+  // 1. 大倉庫（包含從後台同步回來的完整歷史流水帳）
   const entries = db[acct] || [];
   
-  let running = 0;
-  entries.forEach(e => {
-    if (e.type === 'prev') running = e.amount;
-    else if (e.type === 'income') running += e.amount;
-    else running -= e.amount;
-  });
-
-  // 從歷史資料中抓取期初、收入、支出的歷史加總值
-  const prevBal = entries.filter(e => e.type === 'prev').reduce((s, e) => s + e.amount, 0);
-  const totalIn = entries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
-  const totalOut = entries.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
+  // 2. 當前畫面上要呈現的新增或篩選明細資料
+  const rawRows = currentAddedEntries[acct] || [];
   
-  // 👑 1. 重新渲染四大卡片 (修正變數打錯問題，讓卡片安全復活)
+  // ── 👑 核心步驟 1：自動從目前的明細資料中抓取「年.月」基準 ──
+  let targetYearMonth = "";
+  for (let i = 0; i < rawRows.length; i++) {
+    // 排除 type 是 prev 的項目，找出一筆真正的交易日期 (例如 "106.06.12")
+    if (rawRows[i].date && rawRows[i].type !== 'prev') {
+      // 去除空格並切出前 7 個字 (例如 "106.06")
+      targetYearMonth = rawRows[i].date.trim().substring(0, 7);
+      break;
+    }
+  }
+
+  // 初始化四大卡片變數
+  let prevBal = 0;       // 上期結存 (本月以前的累積結餘)
+  let totalIn = 0;       // 本期收入 (僅限本月)
+  let totalOut = 0;      // 本期支出 (僅限本月)
+  let runningBal = 0;    // 流水帳滾動加總專用
+
+  // ── 👑 核心步驟 2：依據識別到的月份，對大倉庫進行時間分流精算 ──
+  if (targetYearMonth) {
+    // 將大倉庫複製一份並進行嚴格的時間先後排序，確保滾帳數字不會錯亂
+    const sortedEntries = [...entries].sort((a, b) => {
+      if (a.type === 'prev') return -1;
+      if (b.type === 'prev') return 1;
+      return (a.date || '').trim().localeCompare((b.date || '').trim());
+    });
+
+    sortedEntries.forEach(e => {
+      // 處理最源頭的歷史期初金額
+      if (e.type === 'prev') {
+        runningBal = e.amount;
+        prevBal = e.amount;
+        return;
+      }
+
+      if (e.date) {
+        const entryYearMonth = e.date.trim().substring(0, 7); // 該筆資料的年月
+
+        // 【分流 A】日期早於目前畫面的月份 ➔ 納入「上期結存」滾動累積
+        if (entryYearMonth < targetYearMonth) {
+          if (e.type === 'income') runningBal += e.amount;
+          else if (e.type === 'expense') runningBal -= e.amount;
+          prevBal = runningBal; // 持續滾動更新，最後會停在上個月底的結餘
+        }
+        // 【分流 B】日期剛好等於目前畫面的月份 ➔ 統計為本期的收入與支出
+        else if (entryYearMonth === targetYearMonth) {
+          if (e.type === 'income') {
+            runningBal += e.amount;
+            totalIn += e.amount;
+          } else if (e.type === 'expense') {
+            runningBal -= e.amount;
+            totalOut += e.amount;
+          }
+        }
+      }
+    });
+  } else {
+    // 備用防線：如果畫面上真的沒有任何帶日期的明細，就維持老方法計算總流水帳
+    entries.forEach(e => {
+      if (e.type === 'prev') runningBal = e.amount;
+      else if (e.type === 'income') runningBal += e.amount;
+      else runningBal -= e.amount;
+    });
+    prevBal = entries.filter(e => e.type === 'prev').reduce((s, e) => s + e.amount, 0);
+    totalIn = entries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
+    totalOut = entries.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
+  }
+
+  // 本期最終結存：公式完美扣連 (上期結存 + 本期收入 - 本期支出)
+  const finalMonthBal = targetYearMonth ? runningBal : runningBal;
+
+  // 3. 渲染上方四大統計卡片 (由時間自動分流，金額百分之百精準)
   document.getElementById(acct+'-stats').innerHTML = `
     <div class="sum-card"><div class="sum-label"><i class="ti ti-arrow-bar-to-up"></i>上期結存</div><div class="sum-value b">${fmtMoney(prevBal)}</div></div>
     <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>本期收入</div><div class="sum-value g">${fmtMoney(totalIn)}</div></div>
     <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>本期支出</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
-    <div class="sum-card hl"><div class="sum-label"><i class="ti ti-wallet"></i>本期結存</div><div class="sum-value">${fmtMoney(running)}</div></div>`;
+    <div class="sum-card hl"><div class="sum-label"><i class="ti ti-wallet"></i>本期結存</div><div class="sum-value">${fmtMoney(finalMonthBal)}</div></div>`;
 
-  // 👑 2. 下方明細表格：過濾掉 type 為 prev 的項目，防止期初幽靈行跑出來
-  const rawRows = currentAddedEntries[acct] || [];
+  // 4. 下方明細表格渲染 (自動隱藏 type === 'prev' 的項目，確保 5 月不跑出幽靈明細)
   const displayRows = rawRows.filter(r => r.type !== 'prev'); 
-  
   const tbody = document.getElementById(acct+'-tbody');
   
   if (displayRows.length === 0){
@@ -1103,7 +1162,7 @@ function renderAcct(acct){
   
   const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
 
-  // 3. 渲染明細列
+  // 5. 繪製乾淨的明細表格
   tbody.innerHTML = displayRows.map(r => {
     const isIn = r.type === 'income';
     const inc = isIn ? `<span class="ni">${fmtMoney(r.amount)}</span>` : '<span class="mu">—</span>';
