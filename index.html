@@ -1068,97 +1068,55 @@ function updateFilter(acct){
 function renderAcct(acct){
   updateFilter(acct);
   
+  // 1. 大倉庫（db[acct]）：用來精準滾算歷史大流水帳，確保統計卡片的金額 100% 準確
   const entries = db[acct] || [];
   
-  // ── 👑 第一步：全自動偵測「目前系統到底想顯示哪一個年月」 ──
-  let targetYear = 0;
-  let targetMonth = 0;
-  let targetTimeValue = 0;
+  let running = 0;      // 最終期末結存
+  let totalIn = 0;       // 歷史累計總收入
+  let totalOut = 0;      // 歷史累計總支出
+  let prevBal = 0;       // 初始期初餘額
 
-  // 聰明的自動偵測邏輯：
-  // 遍歷所有非 prev 的資料，找出最新（或最有效）的那筆交易日期作為「本月基準」
-  for (let i = entries.length - 1; i >= 0; i--) {
-    if (entries[i].date && entries[i].type !== 'prev') {
-      const parts = entries[i].date.split('.');
-      targetYear = parseInt(parts[0], 10);
-      targetMonth = parseInt(parts[1], 10);
-      targetTimeValue = (targetYear * 12) + targetMonth;
-      break; // 抓到最新的月份就收工
-    }
-  }
-
-  // 備用防線：如果完全找不到有日期的交易（例如這帳戶真的只有一筆初始結存）
-  if (targetTimeValue === 0) {
-    // 預設一個系統合理的安全時間（例如 106 年 12 月）
-    targetYear = 106;
-    targetMonth = 12;
-    targetTimeValue = (106 * 12) + 12;
-  }
-
-  let runningBal = 0;        // 歷史流水總滾動餘額
-  let monthPrevBal = 0;      // 自動判定月份的「上期結存」
-  let monthTotalIn = 0;      // 自動判定月份的「本期收入」
-  let monthTotalOut = 0;     // 自動判定月份的「本期支出」
-  
-  const filteredDisplayRows = [];
-
-  // ── 👑 第二步：依據自動判定的時間河流，精算流水帳 ──
   entries.forEach(e => {
     if (e.type === 'prev') {
-      runningBal = e.amount;
-      monthPrevBal = e.amount;
-      return;
-    }
-
-    if (e.date) {
-      const parts = e.date.split('.');
-      const entryYear = parseInt(parts[0], 10);
-      const entryMonth = parseInt(parts[1], 10);
-      const entryTimeValue = (entryYear * 12) + entryMonth;
-
-      // 歷史流水大帳累加
-      if (e.type === 'income') runningBal += e.amount;
-      else if (e.type === 'expense') runningBal -= e.amount;
-
-      // 【分流 A】早於自動判定月份的歷史：用來滾動出最精準的「上期結存接力棒」
-      if (entryTimeValue < targetTimeValue) {
-        monthPrevBal = runningBal;
-      }
-      // 【分流 B】剛好等於自動判定月份：這才是前端要渲染的本月帳目
-      else if (entryTimeValue === targetTimeValue) {
-        if (e.type === 'income') monthTotalIn += e.amount;
-        else if (e.type === 'expense') monthTotalOut += e.amount;
-        
-        filteredDisplayRows.push(e); // 丟進顯示陣列
-      }
+      running = e.amount;
+      prevBal += e.amount;
+    } else if (e.type === 'income') {
+      running += e.amount;
+      totalIn += e.amount;
+    } else if (e.type === 'expense') {
+      running -= e.amount;
+      totalOut += e.amount;
     }
   });
 
-  // 計算最終結存
-  const monthFinalBal = filteredDisplayRows.length > 0 ? runningBal : monthPrevBal;
-
-  // 3. 渲染上方四大統計卡片 (全自動動態校正，再也不會抓錯期初)
+  // 2. 渲染上方四大統計卡片 (由大倉庫精密算出，絕對與後台試算表最終金額同步)
   document.getElementById(acct+'-stats').innerHTML = `
-    <div class="sum-card"><div class="sum-label"><i class="ti ti-arrow-bar-to-up"></i>上期結存</div><div class="sum-value b">${fmtMoney(monthPrevBal)}</div></div>
-    <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>本期收入</div><div class="sum-value g">${fmtMoney(monthTotalIn)}</div></div>
-    <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>本期支出</div><div class="sum-value r">${fmtMoney(monthTotalOut)}</div></div>
-    <div class="sum-card hl"><div class="sum-label"><i class="ti ti-wallet"></i>本期結存</div><div class="sum-value">${fmtMoney(monthFinalBal)}</div></div>`;
+    <div class="sum-card"><div class="sum-label"><i class="ti ti-arrow-bar-to-up"></i>上期結存</div><div class="sum-value b">${fmtMoney(prevBal)}</div></div>
+    <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>本期收入</div><div class="sum-value g">${fmtMoney(totalIn)}</div></div>
+    <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>本期支出</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
+    <div class="sum-card hl"><div class="sum-label"><i class="ti ti-wallet"></i>本期結存</div><div class="sum-value">${fmtMoney(running)}</div></div>`;
 
-  // 4. 下方明細表格渲染
+  // 3. 下方明細表格「嚴格只渲染目前系統篩選出來的項目」
+  // 💡 如果 5 月試算表沒資料，currentAddedEntries[acct] 就會是空的，表格會乾淨不顯示任何明細！
+  const displayRows = currentAddedEntries[acct] || [];
   const tbody = document.getElementById(acct+'-tbody');
   
-  if (filteredDisplayRows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="ti ti-inbox"></i><p>當前月份尚無明細資料</p></div></td></tr>`;
+  if (displayRows.length === 0){
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="ti ti-inbox"></i><p>當前月份尚無新增或明細資料</p></div></td></tr>`;
     return;
   }
   
   const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
 
-  // 5. 開始畫畫
-  tbody.innerHTML = filteredDisplayRows.map(r => {
+  // 4. 開始渲染明細列
+  tbody.innerHTML = displayRows.map(r => {
+    const isPrev = r.type === 'prev';
     const isIn = r.type === 'income';
-    const inc = isIn ? `<span class="ni">${fmtMoney(r.amount)}</span>` : '<span class="mu">—</span>';
-    const exp = !isIn ? `<span class="no">${fmtMoney(r.amount)}</span>` : '<span class="mu">—</span>';
+    
+    // 💡 修正原本畫面會跑出期初文字或重複結存的困擾：
+    // 如果該筆是期初(prev)，顯示結存金額；如果是正常收入(income)，顯示收入金額
+    const inc = isPrev ? `<span class="mu" style="font-size:12px">結存</span>` : isIn ? `<span class="ni">${fmtMoney(r.amount)}</span>` : '<span class="mu">—</span>';
+    const exp = (!isPrev && !isIn) ? `<span class="no">${fmtMoney(r.amount)}</span>` : '<span class="mu">—</span>';
     
     let actionButtons = '';
     if (role === '管理員') {
@@ -1167,8 +1125,8 @@ function renderAcct(acct){
       actionButtons = `<button class="btn primary" style="padding:4px 8px;font-size:12px;" onclick="editRowInline('${acct}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>`;
     }
 
-    return `<tr class="dr" id="row-${acct}-${r.id}">
-      <td class="cell-date">${r.date}</td>
+    return `<tr class="${isPrev ? 'pr' : 'dr'}" id="row-${acct}-${r.id}">
+      <td class="cell-date">${r.date || ''}</td>
       <td class="cell-subj">${r.subj || ''}</td>
       <td class="cell-note mu">${r.note || '—'}</td>
       <td class="cell-inc">${inc}</td>
@@ -1176,7 +1134,9 @@ function renderAcct(acct){
       <td style="white-space: nowrap; text-align: right;">${actionButtons}</td>
     </tr>`;
   }).join('');
-}// ── Fixed ─────────────────────────────────────────────────
+}
+ 
+// ── Fixed ─────────────────────────────────────────────────
 function renderFixed(){
   const latest={B:0,C:0,D:0,E:0};
   db.fixed.forEach(f=>{ latest[f.key]=f.amount; });
