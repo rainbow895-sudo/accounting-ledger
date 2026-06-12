@@ -1068,55 +1068,88 @@ function updateFilter(acct){
 function renderAcct(acct){
   updateFilter(acct);
   
-  // 1. 大倉庫（db[acct]）：用來精準滾算歷史大流水帳，確保統計卡片的金額 100% 準確
+  // ── 🌐 1. 全自動：直接抓取目前的網路時間 (今天) ──
+  const today = new Date();
+  
+  // 自動轉換成台灣慣用的民國年與月份 (例如：西元2026年6月 ➔ 民國115年6月)
+  const currentRocYear = today.getFullYear() - 1911;
+  const currentMonth = today.getMonth() + 1; // getMonth 記得加 1
+  
+  // 組合出目前網路當下的「年.月」基準，用來進行會計接力棒滾算 (例如："115.06")
+  const targetYearMonthStr = `${currentRocYear}.${String(currentMonth).padStart(2, '0')}`;
+  
+  // 算出時間絕對值，用來嚴格區分歷史與本月 (例如: 115*12 + 6 = 1386)
+  const targetTimeValue = (currentRocYear * 12) + currentMonth;
+
+  // 大倉庫（Google 試算表同步回來的完整流水帳）
   const entries = db[acct] || [];
   
-  let running = 0;      // 最終期末結存
-  let totalIn = 0;       // 歷史累計總收入
-  let totalOut = 0;      // 歷史累計總支出
-  let prevBal = 0;       // 初始期初餘額
+  let runningBal = 0;        // 歷史大流水總滾動餘額
+  let monthPrevBal = 0;      // 真正的「上期結存」（截至上個月底累積的金額）
+  let monthTotalIn = 0;      // 真正的「本期收入」（只計算網路當前月份）
+  let monthTotalOut = 0;     // 真正的「本期支出」（只計算網路當前月份）
 
+  // ── 👑 第二步：依據網路時間河流，強迫所有歷史資料精算分流 ──
   entries.forEach(e => {
+    // 歷史最源頭的初始結存
     if (e.type === 'prev') {
-      running = e.amount;
-      prevBal += e.amount;
-    } else if (e.type === 'income') {
-      running += e.amount;
-      totalIn += e.amount;
-    } else if (e.type === 'expense') {
-      running -= e.amount;
-      totalOut += e.amount;
+      runningBal = e.amount;
+      monthPrevBal = e.amount; // 預設值
+      return;
+    }
+
+    if (e.date) {
+      // 解析後台每筆資料的實際民國年、月 (支援 "106.12.01" 或 "115.06.12" 格式)
+      const parts = e.date.split('.');
+      const entryYear = parseInt(parts[0], 10);
+      const entryMonth = parseInt(parts[1], 10);
+      const entryTimeValue = (entryYear * 12) + entryMonth;
+
+      // 歷史流水大帳不中斷累加
+      if (e.type === 'income') runningBal += e.amount;
+      else if (e.type === 'expense') runningBal -= e.amount;
+
+      // 【分流 A】如果這筆交易的時間「早於」目前網路月份 (過去發生的帳)
+      // 金額會一筆一筆往前推，最後停下來的總數，就是傳承給本月的「正確期初上期結存」！
+      if (entryTimeValue < targetTimeValue) {
+        monthPrevBal = runningBal;
+      }
+      // 【分流 B】如果這筆交易的時間「剛好就是目前網路月份」
+      else if (entryTimeValue === targetTimeValue) {
+        if (e.type === 'income') monthTotalIn += e.amount;
+        else if (e.type === 'expense') monthTotalOut += e.amount;
+      }
     }
   });
 
-  // 2. 渲染上方四大統計卡片 (由大倉庫精密算出，絕對與後台試算表最終金額同步)
-  document.getElementById(acct+'-stats').innerHTML = `
-    <div class="sum-card"><div class="sum-label"><i class="ti ti-arrow-bar-to-up"></i>上期結存</div><div class="sum-value b">${fmtMoney(prevBal)}</div></div>
-    <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>本期收入</div><div class="sum-value g">${fmtMoney(totalIn)}</div></div>
-    <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>本期支出</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
-    <div class="sum-card hl"><div class="sum-label"><i class="ti ti-wallet"></i>本期結存</div><div class="sum-value">${fmtMoney(running)}</div></div>`;
+  // 本期最終結存：如果本月有波動就用流水大帳，若沒波動就維持跟期初一樣
+  const monthFinalBal = (monthTotalIn > 0 || monthTotalOut > 0) ? runningBal : monthPrevBal;
 
-  // 3. 下方明細表格「嚴格只渲染目前系統篩選出來的項目」
-  // 💡 如果 5 月試算表沒資料，currentAddedEntries[acct] 就會是空的，表格會乾淨不顯示任何明細！
-  const displayRows = currentAddedEntries[acct] || [];
+  // 2. 渲染上方四大統計卡片 (由網路時間精算，數字絕對與後台試算表最終金額 100% 同步)
+  document.getElementById(acct+'-stats').innerHTML = `
+    <div class="sum-card"><div class="sum-label"><i class="ti ti-arrow-bar-to-up"></i>上期結存</div><div class="sum-value b">${fmtMoney(monthPrevBal)}</div></div>
+    <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>本期收入</div><div class="sum-value g">${fmtMoney(monthTotalIn)}</div></div>
+    <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>本期支出</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
+    <div class="sum-card hl"><div class="sum-label"><i class="ti ti-wallet"></i>本期結存</div><div class="sum-value">${fmtMoney(monthFinalBal)}</div></div>`;
+
+  // 3. 下方明細表格渲染 (只展示當前畫面上新增的、且過濾掉 prev 的純淨明細)
+  const rawRows = currentAddedEntries[acct] || [];
+  const displayRows = rawRows.filter(r => r.type !== 'prev'); 
+  
   const tbody = document.getElementById(acct+'-tbody');
   
   if (displayRows.length === 0){
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="ti ti-inbox"></i><p>當前月份尚無新增或明細資料</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="ti ti-inbox"></i><p>民國 ${currentRocYear} 年 ${currentMonth} 月份尚無新增明細</p></div></td></tr>`;
     return;
   }
   
   const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
 
-  // 4. 開始渲染明細列
+  // 4. 開始畫畫面上的收支表格
   tbody.innerHTML = displayRows.map(r => {
-    const isPrev = r.type === 'prev';
     const isIn = r.type === 'income';
-    
-    // 💡 修正原本畫面會跑出期初文字或重複結存的困擾：
-    // 如果該筆是期初(prev)，顯示結存金額；如果是正常收入(income)，顯示收入金額
-    const inc = isPrev ? `<span class="mu" style="font-size:12px">結存</span>` : isIn ? `<span class="ni">${fmtMoney(r.amount)}</span>` : '<span class="mu">—</span>';
-    const exp = (!isPrev && !isIn) ? `<span class="no">${fmtMoney(r.amount)}</span>` : '<span class="mu">—</span>';
+    const inc = isIn ? `<span class="ni">${fmtMoney(r.amount)}</span>` : '<span class="mu">—</span>';
+    const exp = !isIn ? `<span class="no">${fmtMoney(r.amount)}</span>` : '<span class="mu">—</span>';
     
     let actionButtons = '';
     if (role === '管理員') {
@@ -1125,7 +1158,7 @@ function renderAcct(acct){
       actionButtons = `<button class="btn primary" style="padding:4px 8px;font-size:12px;" onclick="editRowInline('${acct}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>`;
     }
 
-    return `<tr class="${isPrev ? 'pr' : 'dr'}" id="row-${acct}-${r.id}">
+    return `<tr class="dr" id="row-${acct}-${r.id}">
       <td class="cell-date">${r.date || ''}</td>
       <td class="cell-subj">${r.subj || ''}</td>
       <td class="cell-note mu">${r.note || '—'}</td>
