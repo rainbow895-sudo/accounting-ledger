@@ -1068,84 +1068,42 @@ function updateFilter(acct){
 function renderAcct(acct){
   updateFilter(acct);
   
-  // ── 🌐 1. 全自動：直接抓取目前的網路時間 (今天) ──
-  const today = new Date();
-  
-  // 自動轉換成台灣慣用的民國年與月份 (例如：西元2026年6月 ➔ 民國115年6月)
-  const currentRocYear = today.getFullYear() - 1911;
-  const currentMonth = today.getMonth() + 1; // getMonth 記得加 1
-  
-  // 組合出目前網路當下的「年.月」基準，用來進行會計接力棒滾算 (例如："115.06")
-  const targetYearMonthStr = `${currentRocYear}.${String(currentMonth).padStart(2, '0')}`;
-  
-  // 算出時間絕對值，用來嚴格區分歷史與本月 (例如: 115*12 + 6 = 1386)
-  const targetTimeValue = (currentRocYear * 12) + currentMonth;
-
-  // 大倉庫（Google 試算表同步回來的完整流水帳）
+  // 大倉庫（包含 Google 試算表抓下來的完整歷史流水帳）
   const entries = db[acct] || [];
   
-  let runningBal = 0;        // 歷史大流水總滾動餘額
-  let monthPrevBal = 0;      // 真正的「上期結存」（截至上個月底累積的金額）
-  let monthTotalIn = 0;      // 真正的「本期收入」（只計算網路當前月份）
-  let monthTotalOut = 0;     // 真正的「本期支出」（只計算網路當前月份）
-
-  // ── 👑 第二步：依據網路時間河流，強迫所有歷史資料精算分流 ──
+  let running = 0;
   entries.forEach(e => {
-    // 歷史最源頭的初始結存
-    if (e.type === 'prev') {
-      runningBal = e.amount;
-      monthPrevBal = e.amount; // 預設值
-      return;
-    }
-
-    if (e.date) {
-      // 解析後台每筆資料的實際民國年、月 (支援 "106.12.01" 或 "115.06.12" 格式)
-      const parts = e.date.split('.');
-      const entryYear = parseInt(parts[0], 10);
-      const entryMonth = parseInt(parts[1], 10);
-      const entryTimeValue = (entryYear * 12) + entryMonth;
-
-      // 歷史流水大帳不中斷累加
-      if (e.type === 'income') runningBal += e.amount;
-      else if (e.type === 'expense') runningBal -= e.amount;
-
-      // 【分流 A】如果這筆交易的時間「早於」目前網路月份 (過去發生的帳)
-      // 金額會一筆一筆往前推，最後停下來的總數，就是傳承給本月的「正確期初上期結存」！
-      if (entryTimeValue < targetTimeValue) {
-        monthPrevBal = runningBal;
-      }
-      // 【分流 B】如果這筆交易的時間「剛好就是目前網路月份」
-      else if (entryTimeValue === targetTimeValue) {
-        if (e.type === 'income') monthTotalIn += e.amount;
-        else if (e.type === 'expense') monthTotalOut += e.amount;
-      }
-    }
+    if (e.type === 'prev') running = e.amount;
+    else if (e.type === 'income') running += e.amount;
+    else running -= e.amount;
   });
 
-  // 本期最終結存：如果本月有波動就用流水大帳，若沒波動就維持跟期初一樣
-  const monthFinalBal = (monthTotalIn > 0 || monthTotalOut > 0) ? runningBal : monthPrevBal;
-
-  // 2. 渲染上方四大統計卡片 (由網路時間精算，數字絕對與後台試算表最終金額 100% 同步)
+  // 從歷史資料中抓取期初、收入、支出的歷史加總值
+  const prevBal = entries.filter(e => e.type === 'prev').reduce((s, e) => s + e.amount, 0);
+  const totalIn = entries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
+  const totalOut = entries.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
+  
+  // 👑 1. 重新渲染四大卡片 (修正變數打錯問題，讓卡片安全復活)
   document.getElementById(acct+'-stats').innerHTML = `
-    <div class="sum-card"><div class="sum-label"><i class="ti ti-arrow-bar-to-up"></i>上期結存</div><div class="sum-value b">${fmtMoney(monthPrevBal)}</div></div>
-    <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>本期收入</div><div class="sum-value g">${fmtMoney(monthTotalIn)}</div></div>
+    <div class="sum-card"><div class="sum-label"><i class="ti ti-arrow-bar-to-up"></i>上期結存</div><div class="sum-value b">${fmtMoney(prevBal)}</div></div>
+    <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>本期收入</div><div class="sum-value g">${fmtMoney(totalIn)}</div></div>
     <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>本期支出</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
-    <div class="sum-card hl"><div class="sum-label"><i class="ti ti-wallet"></i>本期結存</div><div class="sum-value">${fmtMoney(monthFinalBal)}</div></div>`;
+    <div class="sum-card hl"><div class="sum-label"><i class="ti ti-wallet"></i>本期結存</div><div class="sum-value">${fmtMoney(running)}</div></div>`;
 
-  // 3. 下方明細表格渲染 (只展示當前畫面上新增的、且過濾掉 prev 的純淨明細)
+  // 👑 2. 下方明細表格：過濾掉 type 為 prev 的項目，防止期初幽靈行跑出來
   const rawRows = currentAddedEntries[acct] || [];
   const displayRows = rawRows.filter(r => r.type !== 'prev'); 
   
   const tbody = document.getElementById(acct+'-tbody');
   
   if (displayRows.length === 0){
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="ti ti-inbox"></i><p>民國 ${currentRocYear} 年 ${currentMonth} 月份尚無新增明細</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="ti ti-inbox"></i><p>當前月份尚無新增或明細資料</p></div></td></tr>`;
     return;
   }
   
   const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
 
-  // 4. 開始畫畫面上的收支表格
+  // 3. 渲染明細列
   tbody.innerHTML = displayRows.map(r => {
     const isIn = r.type === 'income';
     const inc = isIn ? `<span class="ni">${fmtMoney(r.amount)}</span>` : '<span class="mu">—</span>';
