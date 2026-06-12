@@ -1090,13 +1090,17 @@ function renderAcct(acct){
   let totalOut = 0;      // 本期(當月)支出
   let prevBal = 0;       // 上期結存（截至上個月底的累積結存）
 
-  // 取得「本期」= 系統當前年月，格式須與 e.date 前7碼一致（例如 2026-06 或 115-06）
+  // 取得「本期」= 系統當前年月，正規化為 "YYYY-MM" 比對，避免分隔符號/位數差異
   const now = new Date();
-  const curYM_AD  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const curYM_ROC = `${now.getFullYear()-1911}.${String(now.getMonth()+1).padStart(2,'0')}`;
+  const curYearAD  = now.getFullYear();
+  const curYearROC = curYearAD - 1911;
+  const curMonth   = now.getMonth() + 1; // 1~12，不補零
   function isCurrentMonth(dateStr) {
     const d = (dateStr || '').trim();
-    return d.slice(0,7) === curYM_AD || d.slice(0,7) === curYM_ROC;
+    const parts = d.split(/[-.\/]/).map(s => parseInt(s, 10));
+    if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return false;
+    const [y, m] = parts;
+    return m === curMonth && (y === curYearAD || y === curYearROC);
   }
 
   // 先把合併後的資料依照日期、ID排序，確保滾帳順序正確
@@ -1147,19 +1151,20 @@ function renderAcct(acct){
     <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>本期支出</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
     <div class="sum-card hl"><div class="sum-label"><i class="ti ti-wallet"></i>本期結存</div><div class="sum-value">${fmtMoney(currentBal)}</div></div>`;
 
-  // 4. 下方明細表格渲染
+  // 4. 下方明細表格渲染：只顯示「當月」資料（不含 prev 期初列）
+  const currentMonthRows = finalDisplayRows.filter(e => e.type !== 'prev' && isCurrentMonth(e.date));
   const tbody = document.getElementById(acct+'-tbody');
   
-  // 如果完全沒資料
-  if (finalDisplayRows.length === 0){
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="ti ti-inbox"></i><p>當前尚無任何帳務明細資料</p></div></td></tr>`;
+  // 如果當月完全沒資料
+  if (currentMonthRows.length === 0){
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="ti ti-inbox"></i><p>本月尚無帳務明細資料</p></div></td></tr>`;
     return;
   }
   
   const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
 
-  // 5. 開始畫明細表格（包含歷史資料與即時滾算結存）
-  tbody.innerHTML = finalDisplayRows.map(r => {
+  // 5. 開始畫明細表格（只含當月，含即時滾算結存）
+  tbody.innerHTML = currentMonthRows.map(r => {
     const isPrev = r.type === 'prev';
     const isIn = r.type === 'income';
     
