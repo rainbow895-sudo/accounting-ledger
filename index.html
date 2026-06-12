@@ -1068,102 +1068,105 @@ function updateFilter(acct){
 function renderAcct(acct){
   updateFilter(acct);
   
-  // 大倉庫（Google 試算表撈下來的完整流水帳）
-  const entries = db[acct] || [];
+  // 1. 這是從 Google 試算表同步回來的「歷史現存明細大倉庫」
+  const historyEntries = db[acct] || [];
   
-  // 當前網頁畫面上要呈現的明細資料（例如 6 月目前唯一的這筆 200 元明細）
-  const rawRows = currentAddedEntries[acct] || [];
+  // 2. 這是使用者剛剛在網頁表單「畫面上新填寫、尚未儲存」的暫存項目
+  const newAddedRows = currentAddedEntries[acct] || [];
   
-  // ── 👑 核心步驟 1：自動從 6 月這筆明細中，抓取「年.月」作為時間分流基準 ──
-  let targetYearMonth = "";
-  for (let i = 0; i < rawRows.length; i++) {
-    // 排除 prev 期初項目，找到真正的明細日期（例如 "106.06.12"）
-    if (rawRows[i].date && rawRows[i].type !== 'prev') {
-      targetYearMonth = rawRows[i].date.trim().substring(0, 7); // 切出 "106.06"
-      break;
+  // ── 👑 核心手術 1：把「歷史現存」與「網頁新填」兩股資料合流 ──
+  // 排除掉重複的 prev（期初）項目，確保只保留一份最源頭的期初
+  const allEntriesToCalculate = [...historyEntries];
+  newAddedRows.forEach(newRow => {
+    // 避免重複加入
+    if (!allEntriesToCalculate.some(h => h.id === newRow.id)) {
+      allEntriesToCalculate.push(newRow);
     }
+  });
+
+  // ── 👑 核心手術 2：從頭到尾滾算流水帳 ──
+  let running = 0;      // 流水動態結存
+  let totalIn = 0;       // 本期(當月)收入
+  let totalOut = 0;      // 本期(當月)支出
+  let prevBal = 0;       // 上期結存（截至上個月底的累積結存）
+
+  // 取得「本期」= 系統當前年月，格式須與 e.date 前7碼一致（例如 2026-06 或 115-06）
+  const now = new Date();
+  const curYM_AD  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const curYM_ROC = `${now.getFullYear()-1911}.${String(now.getMonth()+1).padStart(2,'0')}`;
+  function isCurrentMonth(dateStr) {
+    const d = (dateStr || '').trim();
+    return d.slice(0,7) === curYM_AD || d.slice(0,7) === curYM_ROC;
   }
 
-  // 初始化卡片變數
-  let prevBal = 0;       // 上期結存
-  let totalIn = 0;       // 本期收入
-  let totalOut = 0;      // 本期支出
-  let runningBal = 0;    // 流水帳累積工具
+  // 先把合併後的資料依照日期、ID排序，確保滾帳順序正確
+  allEntriesToCalculate.sort((a, b) => {
+    if (a.type === 'prev') return -1;
+    if (b.type === 'prev') return 1;
+    return (a.date || '').localeCompare(b.date || '');
+  });
 
-  // ── 👑 核心步驟 2：拿 6 月這個基準，去把大倉庫所有歷史明細做時間分流 ──
-  if (targetYearMonth) {
-    // 確保倉庫資料是按照日期乖乖排好隊的
-    const sortedEntries = [...entries].sort((a, b) => {
-      if (a.type === 'prev') return -1;
-      if (b.type === 'prev') return 1;
-      return (a.date || '').trim().localeCompare((b.date || '').trim());
-    });
-
-    sortedEntries.forEach(e => {
-      if (e.type === 'prev') {
-        runningBal = e.amount;
-        prevBal = e.amount;
-        return;
+  // 開始撥算盤：running 為全歷史滾算結存（供明細表逐筆顯示用）
+  // prevBal 則停在「進入本期之前」的最後結存值
+  const finalDisplayRows = allEntriesToCalculate.map(e => {
+    const enteringCurrentMonth = isCurrentMonth(e.date);
+    if (e.type === 'prev') {
+      running = e.amount;
+      prevBal = e.amount;
+    } else if (e.type === 'income') {
+      if (!enteringCurrentMonth) {
+        running += e.amount;
+        prevBal = running; // 仍在本期之前 → 持續推進上期結存
+      } else {
+        running += e.amount;
+        totalIn += e.amount; // 本期收入加總
       }
-
-      if (e.date) {
-        const entryYearMonth = e.date.trim().substring(0, 7);
-
-        // 【分流 A】只要日期比 6 月早 ➔ 屬於過去的帳，累加到「上期結存」
-        if (entryYearMonth < targetYearMonth) {
-          if (e.type === 'income') runningBal += e.amount;
-          else if (e.type === 'expense') runningBal -= e.amount;
-          prevBal = runningBal; // 滾動更新，最後會停在 5 月底累積下來的正確餘額
-        }
-        // 【分流 B】日期剛好是 6 月 ➔ 精準計入本期的卡片統計
-        else if (entryYearMonth === targetYearMonth) {
-          if (e.type === 'income') {
-            runningBal += e.amount;
-            totalIn += e.amount;
-          } else if (e.type === 'expense') {
-            runningBal -= e.amount;
-            totalOut += e.amount;
-          }
-        }
+    } else if (e.type === 'expense') {
+      if (!enteringCurrentMonth) {
+        running -= e.amount;
+        prevBal = running;
+      } else {
+        running -= e.amount;
+        totalOut += e.amount; // 本期支出加總
       }
-    });
-  } else {
-    // 備用防線：如果畫面上完全沒有半筆帶日期的明細，就維持顯示歷史總大帳
-    entries.forEach(e => {
-      if (e.type === 'prev') runningBal = e.amount;
-      else if (e.type === 'income') runningBal += e.amount;
-      else runningBal -= e.amount;
-    });
-    prevBal = entries.filter(e => e.type === 'prev').reduce((s, e) => s + e.amount, 0);
-    totalIn = entries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
-    totalOut = entries.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
-  }
+    }
+    
+    return {
+      ...e,
+      computedBalance: running // 記下這一筆結束時的精準結存
+    };
+  });
 
-  // 本期最終結存 = 上期結存 + 本期收入 - 本期支出
-  const finalMonthBal = targetYearMonth ? runningBal : runningBal;
+  // 本期結存 = 上期結存 + 本期收入 − 本期支出
+  const currentBal = prevBal + totalIn - totalOut;
 
-  // 3. 渲染上方四大統計卡片 (時間分流精算，數字絕對與 Google 試算表同步)
+  // 3. 渲染上方四大統計卡片
   document.getElementById(acct+'-stats').innerHTML = `
     <div class="sum-card"><div class="sum-label"><i class="ti ti-arrow-bar-to-up"></i>上期結存</div><div class="sum-value b">${fmtMoney(prevBal)}</div></div>
     <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-up"></i>本期收入</div><div class="sum-value g">${fmtMoney(totalIn)}</div></div>
     <div class="sum-card"><div class="sum-label"><i class="ti ti-trending-down"></i>本期支出</div><div class="sum-value r">${fmtMoney(totalOut)}</div></div>
-    <div class="sum-card hl"><div class="sum-label"><i class="ti ti-wallet"></i>本期結存</div><div class="sum-value">${fmtMoney(finalMonthBal)}</div></div>`;
+    <div class="sum-card hl"><div class="sum-label"><i class="ti ti-wallet"></i>本期結存</div><div class="sum-value">${fmtMoney(currentBal)}</div></div>`;
 
-  // 4. 下方明細表格渲染 (過濾掉 type === 'prev' 的歷史期初列)
-  const displayRows = rawRows.filter(r => r.type !== 'prev'); 
+  // 4. 下方明細表格渲染
   const tbody = document.getElementById(acct+'-tbody');
   
-  if (displayRows.length === 0){
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="ti ti-inbox"></i><p>當前月份尚無新增或明細資料</p></div></td></tr>`;
+  // 如果完全沒資料
+  if (finalDisplayRows.length === 0){
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="ti ti-inbox"></i><p>當前尚無任何帳務明細資料</p></div></td></tr>`;
     return;
   }
   
   const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
 
-  tbody.innerHTML = displayRows.map(r => {
+  // 5. 開始畫明細表格（包含歷史資料與即時滾算結存）
+  tbody.innerHTML = finalDisplayRows.map(r => {
+    const isPrev = r.type === 'prev';
     const isIn = r.type === 'income';
-    const inc = isIn ? `<span class="ni">${fmtMoney(r.amount)}</span>` : '<span class="mu">—</span>';
-    const exp = !isIn ? `<span class="no">${fmtMoney(r.amount)}</span>` : '<span class="mu">—</span>';
+    
+    // 收入欄位顯示控制
+    const inc = isPrev ? `<span class="mu" style="font-size:12px">結存</span>` : isIn ? `<span class="ni">${fmtMoney(r.amount)}</span>` : '<span class="mu">—</span>';
+    // 支出欄位顯示控制
+    const exp = (!isPrev && !isIn) ? `<span class="no">${fmtMoney(r.amount)}</span>` : '<span class="mu">—</span>';
     
     let actionButtons = '';
     if (role === '管理員') {
@@ -1172,7 +1175,8 @@ function renderAcct(acct){
       actionButtons = `<button class="btn primary" style="padding:4px 8px;font-size:12px;" onclick="editRowInline('${acct}','${r.id}',this)"><i class="ti ti-edit"></i> 編輯</button>`;
     }
 
-    return `<tr class="dr" id="row-${acct}-${r.id}">
+    // 💡 為了讓表格更好看，管家特別把精算出來的「即時結存(r.computedBalance)」顯示在金額後面，或者保持您原本的乾淨結構
+    return `<tr class="${isPrev ? 'pr' : 'dr'}" id="row-${acct}-${r.id}">
       <td class="cell-date">${r.date || ''}</td>
       <td class="cell-subj">${r.subj || ''}</td>
       <td class="cell-note mu">${r.note || '—'}</td>
@@ -1182,7 +1186,7 @@ function renderAcct(acct){
     </tr>`;
   }).join('');
 }
- 
+
 // ── Fixed ─────────────────────────────────────────────────
 function renderFixed(){
   const latest={B:0,C:0,D:0,E:0};
