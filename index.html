@@ -420,6 +420,7 @@ tr:hover td {
   <div style="display:flex;align-items:center;gap:8px;">
     <span class="sync-status loading" id="sync-status"><i class="ti ti-cloud spin"></i>連線中…</span>
     <button class="btn ghost" onclick="exportPDF()"><i class="ti ti-file-text"></i>匯出／列印 PDF</button>
+    <button class="btn ghost" onclick="logoutUser()"><i class="ti ti-logout"></i>登出</button>
   </div>
 </header>
 
@@ -1161,7 +1162,7 @@ function renderAcct(acct){
     return;
   }
   
-  const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
+  const role = localStorage.getItem('beiji_user_role') || window.userRole || '一般';
 
   // 5. 開始畫明細表格（只含當月，含即時滾算結存）
   tbody.innerHTML = currentMonthRows.map(r => {
@@ -1385,7 +1386,7 @@ function runQuery(){
     }
     
     // 💡 取得當前登入使用者的職稱權限
-    const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
+    const role = localStorage.getItem('beiji_user_role') || window.userRole || '一般';
 
     const typeTag = t => t === 'income' ? '<span class="tag in">收入</span>' : t === 'expense' ? '<span class="tag out">支出</span>' : '<span class="tag prev">結存</span>';
     
@@ -1731,10 +1732,11 @@ function exportPDF() {
       // 1. 驗證成功，移除登入遮罩，讓後方主畫面露出來
       document.getElementById('login-overlay').style.display = 'none';
       
-      // 2. 【大補帖】把所有可能用到的權限儲存方式一次塞滿，讓原本系統絕對讀得到！
-      window.userRole = res.role;                                // 記憶體儲存
-      sessionStorage.setItem('beiji_user_role', res.role);       // 新版網頁儲存
-      sessionStorage.setItem('userRole', res.role);             // 舊版網頁儲存
+      // 2. 改用 localStorage：重新整理或關閉分頁後仍維持登入狀態
+      window.userRole = res.role;
+      localStorage.setItem('beiji_logged_in', 'true');
+      localStorage.setItem('beiji_user_role', res.role);
+      localStorage.setItem('userRole', res.role);
       
       console.log("登入成功，角色為:", res.role);
 
@@ -1762,7 +1764,7 @@ function exportPDF() {
 
 // ─── 修改後的權限套用函式 ─────────────────────────────────────
 function applyRolePermissions() {
-  const role = sessionStorage.getItem('beiji_user_role') || window.userRole || '一般';
+  const role = localStorage.getItem('beiji_user_role') || window.userRole || '一般';
   console.log("正在套用權限，當前角色為:", role);
   
   // 1. 還原所有分頁按鈕顯示狀態
@@ -1870,7 +1872,7 @@ async function initializeSystem() {
 
 // ─── 修改：具有權限檢查功能的 Tab 切換 ─────────────────────────
 function switchTab(name) {
-  const role = sessionStorage.getItem('beiji_user_role') || '一般';
+  const role = localStorage.getItem('beiji_user_role') || '一般';
   if (role === '一般' && name !== 'query' && name !== 'report') {
     alert('您的權限層級無法存取記帳功能。');
     return;
@@ -1993,8 +1995,17 @@ async function removeEntryFromQuery(acctKey, id) {
 }
 
 // ─── 修正：網頁初始化守衛 (解決網頁重新整理資料遺失的問題) ──────────────
+// ─── 登出：清除登入狀態，重整後回到登入畫面 ──────────────────────────
+function logoutUser() {
+  if (!confirm('確定要登出嗎？')) return;
+  localStorage.removeItem('beiji_logged_in');
+  localStorage.removeItem('beiji_user_role');
+  localStorage.removeItem('userRole');
+  window.location.reload();
+}
+
 window.onload = async function() {
-  const isAuthed = sessionStorage.getItem('beiji_logged_in');
+  const isAuthed = localStorage.getItem('beiji_logged_in');
   if (isAuthed === 'true') {
     document.getElementById('login-overlay').style.display = 'none';
     await initializeSystem();
