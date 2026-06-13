@@ -789,8 +789,19 @@ async function loadFromGS(){
   try {
     const res = await gsReq({action:'getAll'});
     if(res.error) throw new Error(res.error);
-    db={nonghu:[],taiqiye:[],lingyon:[],jijin:[],fixed:db.fixed};
+    db={nonghu:[],taiqiye:[],lingyon:[],jijin:[],fixed:[]};
     (res.rows||[]).forEach(row=>{
+      // 💡 定存／特殊科目：acct 為「定存特殊」，分流進 db.fixed
+      if (row.acct === '定存特殊') {
+        db.fixed.push({
+          id: String(row.id),
+          month: row.date || '',
+          key: row.subj || '',
+          amount: parseFloat(row.amount) || 0,
+          note: row.note || ''
+        });
+        return;
+      }
       const key=LABEL_TO_KEY[row.acct];
       if(!key||!db[key]) return;
       db[key].push({
@@ -803,6 +814,7 @@ async function loadFromGS(){
         acct: row.acct||''
       });
     });
+    db.fixed.sort((a,b)=>a.month.localeCompare(b.month)||a.key.localeCompare(b.key));
     ACCT_KEYS.forEach(a=>sortEntries(db[a]));
     setStatus('ok','✓ 已同步');
     return true;
@@ -966,21 +978,54 @@ async function saveRowInline(acct, id, btn) {
 }
   
 // ── Fixed (localStorage) ──────────────────────────────────
-function addFixed(){
+async function addFixed(){
   const month=document.getElementById('fx-month').value.trim();
   const key=document.getElementById('fx-key').value;
   const amount=parseFloat(document.getElementById('fx-amount').value);
   const note=document.getElementById('fx-note').value.trim();
   if(!month||isNaN(amount)){ alert('請填寫年月與金額'); return; }
-  db.fixed.push({id:Date.now(),month,key,amount,note});
-  db.fixed.sort((a,b)=>a.month.localeCompare(b.month)||a.key.localeCompare(b.key));
-  saveFixed(); renderFixed();
-  document.getElementById('fx-amount').value='';
-  document.getElementById('fx-note').value='';
+
+  const btn = document.getElementById('fx-add-btn');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader spin"></i>儲存中…';
+  try {
+    // 💡 寫入 Google Sheet：acct 固定為「定存特殊」，date=年月、subj=科目代碼(B/C/D/E)、type=收入(佔位)
+    const res = await gsReq({
+      action: 'add',
+      date: month,
+      subj: key,
+      note: note || '',
+      type: '收入',
+      amount: String(amount),
+      acct: '定存特殊'
+    });
+    if(res.error) throw new Error(res.error);
+
+    db.fixed.push({ id: String(res.id), month, key, amount, note });
+    db.fixed.sort((a,b)=>a.month.localeCompare(b.month)||a.key.localeCompare(b.key));
+    renderFixed();
+    document.getElementById('fx-amount').value='';
+    document.getElementById('fx-note').value='';
+    setStatus('ok','已儲存');
+  } catch(e){
+    alert('儲存失敗：'+e.message);
+    setStatus('err','儲存失敗');
+  }
+  btn.disabled = false; btn.innerHTML = '<i class="ti ti-plus"></i>新增';
 }
-function removeFixed(id){ if(!confirm('確定刪除？')) return; db.fixed=db.fixed.filter(e=>e.id!==id); saveFixed(); renderFixed(); }
-function saveFixed(){ try{ localStorage.setItem('beiji_fixed',JSON.stringify(db.fixed)); }catch(e){} }
-function loadFixed(){ try{ const s=localStorage.getItem('beiji_fixed'); if(s) db.fixed=JSON.parse(s); }catch(e){} }
+
+async function removeFixed(id){
+  if(!confirm('確定刪除？')) return;
+  try {
+    const res = await gsReq({ action: 'delete', id: String(id) });
+    if(res.error) throw new Error(res.error);
+    db.fixed = db.fixed.filter(e=>e.id!==id);
+    renderFixed();
+    setStatus('ok','已刪除');
+  } catch(e){
+    alert('刪除失敗：'+e.message);
+    setStatus('err','刪除失敗');
+  }
+}
 
 // ── Build account tab HTML ────────────────────────────────
 function buildAcctTab(acct){
@@ -1208,7 +1253,7 @@ function renderFixed(){
       <td>${f.month}</td><td>${FIXED_LABELS[f.key]||f.key}</td>
       <td><span class="np">${fmtMoney(f.amount)}</span></td>
       <td class="mu">${f.note||'—'}</td>
-      <td><button class="btn danger" onclick="removeFixed(${f.id})"><i class="ti ti-trash"></i></button></td>
+      <td><button class="btn danger" onclick="removeFixed('${f.id}')"><i class="ti ti-trash"></i></button></td>
     </tr>`).join('');
 }
 
@@ -1811,7 +1856,7 @@ function applyRolePermissions() {
     // 🔒 防線：能進所有分頁，但全面隱藏並禁用所有「刪除」按鈕（防止誤刪歷史大帳）
     const accForbiddenStyles = `
       .btn-delete, #btn-delete, td .ti-trash { display: none !important; }
-    `;render
+    `;
     injectTemplateStyles(accForbiddenStyles);
 
     setTimeout(() => {
