@@ -737,21 +737,53 @@ let db = { nonghu:[], taiqiye:[], lingyon:[], jijin:[], fixed:[] };
 // 💡 全域追加：用來記錄各個分頁在當前瀏覽器視窗中「剛剛新增」的項目，剛進去時是空的
 let currentAddedEntries = { nonghu: [], taiqiye: [], lingyon: [], jijin: [] };
 
-// ── 民國日期工具（使用原生日曆） ─────────────────────────
-// 西元 → 民國：yyyy.mm.dd
-function adToRoc(adStr){
+// ── 日期格式統一工具 ─────────────────────────────────────
+// 儲存格式（寫入 Google Sheet）：西元 YYYY/MM/DD，例如 2026/06/10
+// 顯示格式（畫面呈現）       ：民國 YYY/MM/DD ，例如 115/06/10
+
+// input[type=date] 的值 (YYYY-MM-DD) → 儲存格式 (YYYY/MM/DD)
+function adInputToStorage(adStr){
   if(!adStr) return '';
   const [y,m,d] = adStr.split('-');
-  return `${parseInt(y)-1911}.${m}.${d}`;
+  if(!y||!m||!d) return '';
+  return `${y}/${m.padStart(2,'0')}/${d.padStart(2,'0')}`;
 }
-// 民國 → 西元（給 input[type=date] 使用）
-function rocToAd(rocStr){
-  if(!rocStr) return '';
-  const parts = rocStr.split('.');
-  if(parts.length<3) return '';
-  const y = String(parseInt(parts[0])+1911);
-  return `${y}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
+
+// 任意舊格式（民國.分隔、西元-分隔、西元/分隔等）→ 正規化為儲存格式 YYYY/MM/DD（西元）
+function normalizeToStorage(dateStr){
+  const d = String(dateStr || '').trim();
+  if(!d) return '';
+  const parts = d.split(/[-.\/]/).map(s => s.trim());
+  if(parts.length < 3) return d; // 無法解析就原樣回傳，避免資料遺失
+  let [y, m, day] = parts;
+  let yNum = parseInt(y, 10);
+  if (isNaN(yNum)) return d;
+  // 民國年（小於1911）→ 轉西元
+  if (yNum < 1911) yNum += 1911;
+  m = String(parseInt(m,10)).padStart(2,'0');
+  day = String(parseInt(day,10)).padStart(2,'0');
+  return `${yNum}/${m}/${day}`;
 }
+
+// 儲存格式 (西元 YYYY/MM/DD 或相容舊格式) → 顯示格式 (民國 YYY/MM/DD)
+function storageToDisplay(dateStr){
+  const d = normalizeToStorage(dateStr);
+  if(!d) return '';
+  const parts = d.split('/');
+  if(parts.length < 3) return d;
+  const rocYear = parseInt(parts[0],10) - 1911;
+  return `${rocYear}/${parts[1]}/${parts[2]}`;
+}
+
+// 儲存格式 (YYYY/MM/DD) → input[type=date] 用的 YYYY-MM-DD
+function storageToInputAD(dateStr){
+  const d = normalizeToStorage(dateStr);
+  if(!d) return '';
+  const parts = d.split('/');
+  if(parts.length < 3) return '';
+  return `${parts[0]}-${parts[1]}-${parts[2]}`;
+}
+
 function buildRocDatePicker(idPrefix){
   const today = new Date().toISOString().slice(0,10);
   return `<div style="position:relative;display:inline-block;">
@@ -765,14 +797,16 @@ function buildRocDatePicker(idPrefix){
     />
   </div>`;
 }
+// 取得新增表單中選擇的日期 → 儲存格式 (西元 YYYY/MM/DD)，供 addEntry 寫入 GAS 使用
 function getDateVal(pfx){
   const native = document.getElementById(pfx+'-date-native');
   if(!native||!native.value) return '';
-  return adToRoc(native.value);
+  return adInputToStorage(native.value);
 }
 function updateDays(pfx){
   // no-op: native date picker handles this
   const y = 0, m = 0;
+
   // native date picker auto-handles days
 }
 
@@ -806,7 +840,7 @@ async function loadFromGS(){
       if(!key||!db[key]) return;
       db[key].push({
         id: String(row.id),
-        date: row.date||'',
+        date: normalizeToStorage(row.date)||'',
         subj: row.subj||'',
         note: row.note||'',
         type: TYPE_MAP_R[row.type]||row.type||'income',
@@ -901,7 +935,7 @@ function editRowInline(acct, id, btn) {
   const actionTd = btn.parentElement;
 
   // 1. 基本字串變身輸入框
-  dateTd.innerHTML = `<input type="text" class="edit-input-date" value="${item.date}" style="width:85px; padding:2px;">`;
+  dateTd.innerHTML = `<input type="text" class="edit-input-date" value="${storageToDisplay(item.date)}" placeholder="115/06/10" style="width:85px; padding:2px;">`;
   subjTd.innerHTML = `<input type="text" class="edit-input-subj" value="${item.subj}" style="width:100px; padding:2px;">`;
   noteTd.innerHTML = `<input type="text" class="edit-input-note" value="${item.note}" style="width:120px; padding:2px;">`;
 
@@ -926,7 +960,7 @@ async function saveRowInline(acct, id, btn) {
   const tr = document.getElementById(`row-${acct}-${id}`);
   if (!tr) return;
 
-  const newDate = tr.querySelector('.edit-input-date').value.trim();
+  const newDate = normalizeToStorage(tr.querySelector('.edit-input-date').value.trim());
   const newSubj = tr.querySelector('.edit-input-subj').value.trim();
   const newNote = tr.querySelector('.edit-input-note').value.trim();
   const newAmount = parseFloat(tr.querySelector('.edit-input-amount').value);
@@ -1136,17 +1170,15 @@ function renderAcct(acct){
   let totalOut = 0;      // 本期(當月)支出
   let prevBal = 0;       // 上期結存（截至上個月底的累積結存）
 
-  // 取得「本期」= 系統當前年月，正規化為 "YYYY-MM" 比對，避免分隔符號/位數差異
+  // 取得「本期」= 系統當前年月。db 中的 date 已統一為西元 YYYY/MM/DD
   const now = new Date();
   const curYearAD  = now.getFullYear();
-  const curYearROC = curYearAD - 1911;
-  const curMonth   = now.getMonth() + 1; // 1~12，不補零
+  const curMonth   = now.getMonth() + 1; // 1~12
   function isCurrentMonth(dateStr) {
     const d = (dateStr || '').trim();
-    const parts = d.split(/[-.\/]/).map(s => parseInt(s, 10));
+    const parts = d.split('/').map(s => parseInt(s, 10));
     if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return false;
-    const [y, m] = parts;
-    return m === curMonth && (y === curYearAD || y === curYearROC);
+    return parts[1] === curMonth && parts[0] === curYearAD;
   }
 
   // 先把合併後的資料依照日期、ID排序，確保滾帳順序正確
@@ -1228,7 +1260,7 @@ function renderAcct(acct){
 
     // 💡 為了讓表格更好看，管家特別把精算出來的「即時結存(r.computedBalance)」顯示在金額後面，或者保持您原本的乾淨結構
     return `<tr class="${isPrev ? 'pr' : 'dr'}" id="row-${acct}-${r.id}">
-      <td class="cell-date">${r.date || ''}</td>
+      <td class="cell-date">${storageToDisplay(r.date) || ''}</td>
       <td class="cell-subj">${r.subj || ''}</td>
       <td class="cell-note mu">${r.note || '—'}</td>
       <td class="cell-inc">${inc}</td>
@@ -1319,8 +1351,10 @@ function renderReport() {
 function monthStats(acct) {
   const ms = {};
   db[acct].forEach(e => {
-    const m = (e.date || '').slice(0, 6);
-    if (!m) return;
+    const parts = (e.date || '').split('/');
+    if (parts.length < 2) return;
+    const rocYear = parseInt(parts[0], 10) - 1911;
+    const m = `${rocYear}.${parts[1]}`; // 民國年.月，供畫面顯示用
     if (!ms[m]) ms[m] = { in: 0, out: 0 };
     if (e.type === 'income') ms[m].in += e.amount;
     else if (e.type === 'expense') ms[m].out += e.amount;
@@ -1348,9 +1382,9 @@ function runQuery(){
   const acctFilter = document.getElementById('q-acct').value;
   const typeFilter = document.getElementById('q-type').value;
   
-  // 統一將前端日期欄位清洗成標準橫線格式
-  const dateFrom = dateFromEl.value.trim().replace(/[\/\.]/g, '-');
-  const dateTo   = dateToEl.value.trim().replace(/[\/\.]/g, '-');
+  // 篩選用的起訖日期：input[type=date] 為 YYYY-MM-DD，轉成 YYYY/MM/DD 以對齊儲存格式
+  const dateFrom = dateFromEl.value.trim().replace(/-/g, '/');
+  const dateTo   = dateToEl.value.trim().replace(/-/g, '/');
   const keyword  = document.getElementById('q-keyword').value.trim().toLowerCase();
   
   let results = [];
@@ -1362,24 +1396,11 @@ function runQuery(){
         if (acctFilter && acctLabel !== acctFilter) return;
         if (typeFilter && TYPE_MAP[e.type] !== typeFilter) return;
         
-        // 將斜線 / 和 點點 . 通通轉換成橫線 -
-        let rawDate = String(e.date || '').trim().replace(/[\/\.]/g, '-');
-        if (rawDate.includes('T')) {
-          rawDate = rawDate.split('T')[0];
-        } else {
-          rawDate = rawDate.substring(0, 10);
-        }
+        // e.date 已統一為儲存格式 YYYY/MM/DD（西元），可直接字串比對
+        const rawDate = normalizeToStorage(e.date);
         
-        let compareDate = rawDate; 
-        
-        // 完美兼容民國 115 年
-        if (rawDate.startsWith('115-')) {
-          compareDate = '2026' + rawDate.substring(3);
-        }
-        
-        // 使用完全對齊的西元橫線時間軸進行過濾
-        if (dateFrom && compareDate < dateFrom) return;
-        if (dateTo && compareDate > dateTo) return;
+        if (dateFrom && rawDate < dateFrom) return;
+        if (dateTo && rawDate > dateTo) return;
         
         if (keyword) { 
           const h = ((e.subj || '') + (e.note || '')).toLowerCase(); 
@@ -1448,7 +1469,7 @@ function runQuery(){
       // 💡 幫 <tr> 加上動態 ID (qrow-帳戶-明細ID)，並幫各個要編輯的欄位加上專屬 class
       return `
         <tr class="dr" id="qrow-${r.acctKey}-${r.id}">
-          <td class="qcell-date" style="white-space:nowrap;">${r.date}</td>
+          <td class="qcell-date" style="white-space:nowrap;">${storageToDisplay(r.date)}</td>
           <td class="mu" style="white-space:nowrap;">${r.acctLabel}</td>
           <td class="qcell-subj" style="white-space:nowrap;">${r.subj || ''}</td>
           <td class="qcell-note mu" style="white-space:nowrap;">${r.note || '—'}</td>
@@ -1472,12 +1493,17 @@ function exportPDF() {
   const fixed = getFixedLatest();
   const grand = A + Object.values(fixed).reduce((s,v)=>s+v,0);
 
-  // 計算期間
+  // 計算期間（顯示為民國年.月）
   let allDates=[];
-  ACCT_KEYS.forEach(a=>{ db[a].forEach(e=>{ if(e.date) allDates.push(e.date); }); });
+  ACCT_KEYS.forEach(a=>{ db[a].forEach(e=>{ if(e.date) allDates.push(normalizeToStorage(e.date)); }); });
   allDates.sort();
+  function toRocYM(d){
+    const parts = d.split('/');
+    if(parts.length<2) return d;
+    return `${parseInt(parts[0],10)-1911}.${parts[1]}`;
+  }
   const periodStr = allDates.length
-    ? (allDates[0].slice(0,7) + (allDates[0].slice(0,7)!==allDates[allDates.length-1].slice(0,7) ? ' ～ '+allDates[allDates.length-1].slice(0,7) : ''))
+    ? (toRocYM(allDates[0]) + (toRocYM(allDates[0])!==toRocYM(allDates[allDates.length-1]) ? ' ～ '+toRocYM(allDates[allDates.length-1]) : ''))
     : '';
 
   // 2. 開始動態建構專門用來列印的 HTML 內容與精細 CSS 樣式
@@ -1677,7 +1703,7 @@ function exportPDF() {
       // 💡 這裡同步拿掉了 <td> 類型 </td> 的那一行
       printContent += `
         <tr>
-          <td class="text-center">${e.date || ''}</td>
+          <td class="text-center">${storageToDisplay(e.date) || ''}</td>
           <td>${e.subj || ''}</td>
           <td>${e.note || ''}</td>
           <td class="text-right">${inc !== '' ? inc.toLocaleString('zh-TW') : ''}</td>
@@ -1754,7 +1780,6 @@ function exportPDF() {
   }, 350);
 }
 
-
   async function submitLogin() {
   const user = document.getElementById('login-user').value;
   const pwd = document.getElementById('login-pwd').value;
@@ -1824,7 +1849,7 @@ function applyRolePermissions() {
   injectTemplateStyles('');
 
   // ═══ 情況 A：一般訪客（最高機密防線：只能查，絕不能動） ═════════════════════════════
-  if (role === '一般') {
+  if (role === '訪客') {
     // 🔒 防線 1：只准保留 'query' (查詢) 分頁，其他分頁一律消失
     allTabs.forEach(btn => {
       const tab = btn.getAttribute('data-tab') || '';
@@ -1918,8 +1943,8 @@ async function initializeSystem() {
 
 // ─── 修改：具有權限檢查功能的 Tab 切換 ─────────────────────────
 function switchTab(name) {
-  const role = localStorage.getItem('beiji_user_role') || '一般';
-  if (role === '一般' && name !== 'query' && name !== 'report') {
+  const role = localStorage.getItem('beiji_user_role') || '訪客';
+  if (role === '訪客' && name !== 'query' && name !== 'report') {
     alert('您的權限層級無法存取記帳功能。');
     return;
   }
@@ -1954,7 +1979,7 @@ function editRowInlineQuery(acctKey, id, btn) {
   const actionTd = btn.parentElement;
 
   // 歷史資料所有欄位解鎖變輸入框
-  dateTd.innerHTML = `<input type="text" class="qedit-input-date" value="${item.date}" style="width:85px; padding:2px;">`;
+  dateTd.innerHTML = `<input type="text" class="qedit-input-date" value="${storageToDisplay(item.date)}" placeholder="115/06/10" style="width:85px; padding:2px;">`;
   subjTd.innerHTML = `<input type="text" class="qedit-input-subj" value="${item.subj}" style="width:100px; padding:2px;">`;
   noteTd.innerHTML = `<input type="text" class="qedit-input-note" value="${item.note}" style="width:120px; padding:2px;">`;
   amountTd.innerHTML = `<input type="number" class="qedit-input-amount" value="${item.amount}" inputmode="numeric" pattern="[0-9]*" style="width:80px; padding:2px; text-align:right;">`;
@@ -1970,7 +1995,7 @@ async function saveRowInlineQuery(acctKey, id, btn) {
   const tr = document.getElementById(`qrow-${acctKey}-${id}`);
   if (!tr) return;
 
-  const newDate = tr.querySelector('.qedit-input-date').value.trim();
+  const newDate = normalizeToStorage(tr.querySelector('.qedit-input-date').value.trim());
   const newSubj = tr.querySelector('.qedit-input-subj').value.trim();
   const newNote = tr.querySelector('.qedit-input-note').value.trim();
   const newAmount = parseFloat(tr.querySelector('.qedit-input-amount').value);
