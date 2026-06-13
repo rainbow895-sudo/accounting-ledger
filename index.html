@@ -1472,17 +1472,13 @@ function exportPDF() {
   const fixed = getFixedLatest();
   const grand = A + Object.values(fixed).reduce((s,v)=>s+v,0);
 
-  // 👑【精準鎖定畫面區間】直接拿網頁畫面上目前主委選取的月份（例如 "115.06"）
-  const dateInput = document.getElementById('search-date');
-  let targetYearMonth = dateInput && dateInput.value ? dateInput.value.trim().substring(0, 7) : "";
-  
-  // 如果畫面上沒抓到，就自動預設為當前的 115.06
-  if (!targetYearMonth) {
-    targetYearMonth = "115.06"; 
-  }
-  
-  // 這樣期間就絕對保證是乾乾淨淨的民國年月份，再也不會混到西元 2026
-  const periodStr = targetYearMonth; 
+  // 計算期間
+  let allDates=[];
+  ACCT_KEYS.forEach(a=>{ db[a].forEach(e=>{ if(e.date) allDates.push(e.date); }); });
+  allDates.sort();
+  const periodStr = allDates.length
+    ? (allDates[0].slice(0,7) + (allDates[0].slice(0,7)!==allDates[allDates.length-1].slice(0,7) ? ' ～ '+allDates[allDates.length-1].slice(0,7) : ''))
+    : '';
 
   // 2. 開始動態建構專門用來列印的 HTML 內容與精細 CSS 樣式
   let printContent = `
@@ -1534,6 +1530,7 @@ function exportPDF() {
           border-collapse: collapse;
           margin-bottom: 20px;
         }
+        /* 💡 跨頁自動重複欄位標頭魔法 */
         thead {
           display: table-header-group; 
         }
@@ -1592,6 +1589,7 @@ function exportPDF() {
           margin-top: 30px;
           page-break-inside: avoid; /* 防止簽名欄被攔腰截斷切頁 */
         }
+        /* 2欄組合平分，4個方框剛好各佔 25% 達到絕對對稱 */
         .sign-box {
           width: 25%;
           border: 1px solid #000000;
@@ -1606,7 +1604,12 @@ function exportPDF() {
           border-bottom: 1px solid #000000;
         }
         .sign-space {
-          height: 55px; /* 🚀 完美留出 55px 乾淨空白 */
+          height: 55px; /* 🚀 完美留出 55px 乾淨空白供主委、監委蓋章手寫 */
+        }
+        .footer-note {
+          font-size: 9pt;
+          font-style: italic;
+          margin-top: 12px;
         }
       </style>
     </head>
@@ -1615,7 +1618,8 @@ function exportPDF() {
 
   // 3. 逐一巡迴帳戶資料產出頁面
   ACCT_KEYS.forEach(acct => {
-    const entries = db[acct] || [];
+    const entries = db[acct];
+    if (entries.length === 0) return;
     const acctName = ACCT_LABELS[acct];
 
     /* 🛡️ 基金會隔離防線 */
@@ -1663,58 +1667,14 @@ function exportPDF() {
           <tbody>
     `;
 
-    // 👑【當月與上期金額純115年精準分流計算】
-    let prevBal = 0;
     let running = 0;
-    
-    const firstPrev = entries.find(e => e.type === 'prev');
-    if (firstPrev) {
-      prevBal = firstPrev.amount;
-      running = firstPrev.amount;
-    }
-
-    // 依據日期排序
-    const sorted = [...entries]
-      .filter(e => e.type !== 'prev')
-      .sort((a,b) => (a.date || '').trim().localeCompare((b.date || '').trim()));
-
-    // 滾動計入在查詢月份之前的歷史金額作為「上期結存」
-    sorted.forEach(e => {
-      if (!e.date) return;
-      const eYM = e.date.trim().substring(0, 7);
-      if (eYM < targetYearMonth) {
-        if (e.type === 'income') running += e.amount;
-        else running -= e.amount;
-        prevBal = running;
-      }
-    });
-
-    // 💡【6月零用金特別校正防線】
-    if (acct === 'lingyon' && targetYearMonth === "115.06") {
-      prevBal = 72520;
-      running = 72520;
-    }
-
-    // 插入統一格式的上期結存列
-    printContent += `
-      <tr>
-        <td class="text-center">${targetYearMonth}</td>
-        <td>上期結存</td>
-        <td>前月帳務結轉餘額</td>
-        <td class="text-right"></td>
-        <td class="text-right"></td>
-        <td class="text-right">${prevBal.toLocaleString('zh-TW')}</td>
-      </tr>
-    `;
-
-    // 👑【核心過濾】只撈出與畫面上選取月份（如 115.06）完全一模一樣的明細資料
-    const currentMonthEntries = sorted.filter(e => e.date && e.date.trim().substring(0, 7) === targetYearMonth);
-
-    currentMonthEntries.forEach(e => {
+    entries.forEach(e => {
       let inc = '', exp = '';
-      if (e.type === 'income') { running += e.amount; inc = e.amount; }
+      if (e.type === 'prev') { running = e.amount; inc = e.amount; }
+      else if (e.type === 'income') { running += e.amount; inc = e.amount; }
       else { running -= e.amount; exp = e.amount; }
 
+      // 💡 這裡同步拿掉了 <td> 類型 </td> 的那一行
       printContent += `
         <tr>
           <td class="text-center">${e.date || ''}</td>
@@ -1727,10 +1687,11 @@ function exportPDF() {
       `;
     });
 
-    // 計算小計
-    const totalIn  = currentMonthEntries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
-    const totalOut = currentMonthEntries.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
+    // 計算合計
+    const totalIn  = entries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
+    const totalOut = entries.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
 
+    // 插入合計列 (colspan 從 4 改為 3，因為少了一欄)
     printContent += `
           <tr class="total-row">
             <td colspan="3" class="text-right">本月合計 單位小計：</td>
@@ -1742,15 +1703,13 @@ function exportPDF() {
       </table>
     `;
 
-    // 顯示定期存款部分
+    // 顯示定期存款部分（僅主帳戶顯示）
     if (RA.includes(acct)) {
       const noteMap = {};
-      if (db.fixed) {
-        db.fixed.forEach(f => { 
-          if (!noteMap[f.key]) noteMap[f.key] = ''; 
-          noteMap[f.key] += (noteMap[f.key] ? '、' : '') + f.note; 
-        });
-      }
+      db.fixed.forEach(f => { 
+        if (!noteMap[f.key]) noteMap[f.key] = ''; 
+        noteMap[f.key] += (noteMap[f.key] ? '、' : '') + f.note; 
+      });
 
       printContent += `
         <div class="fixed-section">
@@ -1766,7 +1725,7 @@ function exportPDF() {
       `;
     }
 
-    // 簽名方框
+    // 插入完全等寬 4 格手寫簽名方框
     printContent += `
         <table class="sign-container">
           <tr>
@@ -1776,6 +1735,7 @@ function exportPDF() {
             <td class="sign-box"><div class="sign-title">${t4}</div><div class="sign-space"></div></td>
           </tr>
         </table>
+        
       </div>
     `;
   });
@@ -1787,11 +1747,14 @@ function exportPDF() {
   printWindow.document.write(printContent);
   printWindow.document.close();
   
+  // 給瀏覽器一點時間加載樣式後立刻喚醒列印
   printWindow.setTimeout(function() {
     printWindow.print();
     printWindow.close();
   }, 350);
 }
+
+
   async function submitLogin() {
   const user = document.getElementById('login-user').value;
   const pwd = document.getElementById('login-pwd').value;
