@@ -1486,25 +1486,65 @@ function runQuery(){
 function exportPDF() {
   const ACCT_LABELS = {nonghu:'農會儲簿', taiqiye:'台企儲簿', lingyon:'零用金（採購）', jijin:'基金會'};
   const RA = ['nonghu', 'taiqiye', 'lingyon'];
-  
-  // 1. 讀取目前網頁選取的帳戶
+  const PAIR_LEFT = ['nonghu', 'taiqiye']; // 農會 + 台企 整合一頁
+
+  // 1. 讀取目前查詢分頁選取的帳戶與日期區間
   const qAcctSelect = document.getElementById('q-acct') ? document.getElementById('q-acct').value : '';
+  const qDateFromEl = document.getElementById('q-date-from');
+  const qDateToEl   = document.getElementById('q-date-to');
+  const dateFrom = qDateFromEl && qDateFromEl.value ? qDateFromEl.value.trim().replace(/-/g, '/') : '';
+  const dateTo   = qDateToEl && qDateToEl.value ? qDateToEl.value.trim().replace(/-/g, '/') : '';
+
   const A = RA.reduce((s,a)=>s+getAcctBal(a),0);
   const fixed = getFixedLatest();
   const grand = A + Object.values(fixed).reduce((s,v)=>s+v,0);
 
-  // 計算期間（顯示為民國年.月）
-  let allDates=[];
-  ACCT_KEYS.forEach(a=>{ db[a].forEach(e=>{ if(e.date) allDates.push(normalizeToStorage(e.date)); }); });
-  allDates.sort();
-  function toRocYM(d){
-    const parts = d.split('/');
-    if(parts.length<2) return d;
-    return `${parseInt(parts[0],10)-1911}.${parts[1]}`;
+  // 期間顯示：優先使用查詢分頁選擇的日期區間（與查詢同步）
+  function toRocYMD(d){
+    const parts = normalizeToStorage(d).split('/');
+    if(parts.length<3) return d;
+    return `${parseInt(parts[0],10)-1911}/${parts[1]}/${parts[2]}`;
   }
-  const periodStr = allDates.length
-    ? (toRocYM(allDates[0]) + (toRocYM(allDates[0])!==toRocYM(allDates[allDates.length-1]) ? ' ～ '+toRocYM(allDates[allDates.length-1]) : ''))
-    : '';
+  let periodStr = '';
+  if (dateFrom || dateTo) {
+    periodStr = `${dateFrom ? toRocYMD(dateFrom) : '?'} ～ ${dateTo ? toRocYMD(dateTo) : '?'}`;
+  } else {
+    // 沒有指定區間時，回退顯示全部資料的最早～最晚月份
+    let allDates=[];
+    ACCT_KEYS.forEach(a=>{ db[a].forEach(e=>{ if(e.date) allDates.push(normalizeToStorage(e.date)); }); });
+    allDates.sort();
+    function toRocYM(d){
+      const parts = d.split('/');
+      if(parts.length<2) return d;
+      return `${parseInt(parts[0],10)-1911}.${parts[1]}`;
+    }
+    periodStr = allDates.length
+      ? (toRocYM(allDates[0]) + (toRocYM(allDates[0])!==toRocYM(allDates[allDates.length-1]) ? ' ～ '+toRocYM(allDates[allDates.length-1]) : ''))
+      : '';
+  }
+
+  // 依日期區間篩選明細（與查詢分頁同步）
+  function filterEntries(acct){
+    return (db[acct] || []).filter(e => {
+      const d = normalizeToStorage(e.date);
+      if (e.type === 'prev') return true; // 上期結存列永遠保留
+      if (dateFrom && d < dateFrom) return false;
+      if (dateTo && d > dateTo) return false;
+      return true;
+    });
+  }
+
+  // 決定要輸出哪些帳戶
+  let acctsToPrint = [];
+  if (qAcctSelect === 'jijin' || qAcctSelect === '基金會') {
+    acctsToPrint = ['jijin'];
+  } else if (qAcctSelect && LABEL_TO_KEY[qAcctSelect]) {
+    acctsToPrint = [LABEL_TO_KEY[qAcctSelect]];
+  } else {
+    acctsToPrint = ['nonghu','taiqiye','lingyon']; // 預設不含基金會
+  }
+  // 過濾掉沒有資料的帳戶
+  acctsToPrint = acctsToPrint.filter(a => filterEntries(a).length > 0);
 
   // 2. 開始動態建構專門用來列印的 HTML 內容與精細 CSS 樣式
   let printContent = `
@@ -1512,7 +1552,6 @@ function exportPDF() {
     <head>
       <title>北極殿 帳務明細報表</title>
       <style>
-        /* 🖨️ 列印防爆核心防線：強鎖 A4 縱向、黑白印刷模式 */
         @page {
           size: A4 portrait;
           margin: 15mm 12mm;
@@ -1526,13 +1565,12 @@ function exportPDF() {
           font-size: 11pt;
         }
         .report-page {
-          page-break-after: always; /* 每個帳戶獨立分頁 */
+          page-break-after: always;
         }
         .report-page:last-child {
           page-break-after: avoid;
         }
-        
-        /* 📝 頂部大標題區 */
+
         .title-table {
           width: 100%;
           border-collapse: collapse;
@@ -1549,16 +1587,21 @@ function exportPDF() {
           color: #333333;
           padding-bottom: 12px;
         }
+        .acct-block-title {
+          font-size: 12pt;
+          font-weight: bold;
+          margin: 10px 0 4px;
+          border-bottom: 2px solid #000;
+          padding-bottom: 3px;
+        }
 
-        /* 📊 核心明細表格與經典黑白會計線條 */
         .data-table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 20px;
+          margin-bottom: 16px;
         }
-        /* 💡 跨頁自動重複欄位標頭魔法 */
         thead {
-          display: table-header-group; 
+          display: table-header-group;
         }
         .data-table th {
           border-top: 2px solid #000000;
@@ -1578,15 +1621,13 @@ function exportPDF() {
         }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
-        
-        /* 💰 本月合計：標準會計雙底線 */
+
         .total-row td {
           font-weight: bold;
           border-top: 1px solid #000000;
-          border-bottom: 4px double #000000; /* 經典雙底線 */
+          border-bottom: 4px double #000000;
         }
 
-        /* 🔒 定存與特殊科目區 */
         .fixed-section {
           width: 100%;
           margin-bottom: 25px;
@@ -1608,14 +1649,12 @@ function exportPDF() {
           padding: 8px 0;
         }
 
-        /* ✍️ 核心視覺：4格完全等寬、乾淨方形手寫簽名框 */
         .sign-container {
           width: 100%;
           border-collapse: collapse;
           margin-top: 30px;
-          page-break-inside: avoid; /* 防止簽名欄被攔腰截斷切頁 */
+          page-break-inside: avoid;
         }
-        /* 2欄組合平分，4個方框剛好各佔 25% 達到絕對對稱 */
         .sign-box {
           width: 25%;
           border: 1px solid #000000;
@@ -1630,7 +1669,7 @@ function exportPDF() {
           border-bottom: 1px solid #000000;
         }
         .sign-space {
-          height: 55px; /* 🚀 完美留出 55px 乾淨空白供主委、監委蓋章手寫 */
+          height: 55px;
         }
         .footer-note {
           font-size: 9pt;
@@ -1642,57 +1681,23 @@ function exportPDF() {
     <body>
   `;
 
-  // 3. 逐一巡迴帳戶資料產出頁面
-  ACCT_KEYS.forEach(acct => {
-    const entries = db[acct];
-    if (entries.length === 0) return;
-    const acctName = ACCT_LABELS[acct];
-
-    /* 🛡️ 基金會隔離防線 */
-    if (qAcctSelect === 'jijin' || qAcctSelect === '基金會') {
-      if (acct !== 'jijin') return;
-    } else {
-      if (acct === 'jijin') return;
-    }
-
-    // 決定簽名職稱
-    let isJijin = (acct === 'jijin');
-    let t1 = isJijin ? '基金會董事長' : '主 委 ';
-    let t2 = isJijin ? '基金會監事' : '監 委 ';
-    let t3 = isJijin ? '基金會出納' : '出 納 ';
-    let t4 = isJijin ? '基金會會計' : '會 計 ';
-
-    printContent += `
-      <div class="report-page">
-        <table class="title-table">
-          <tr><td class="main-title">北極殿 帳務明細報表</td></tr>
-          <tr class="subtitle-row">
-            <td>
-              <table style="width:100%;">
-                <tr>
-                  <td style="width:30%;"><b>帳戶：</b>${acctName}</td>
-                  <td style="width:40%; text-align:center;"><b>期間：</b>${periodStr}</td>
-                  <td style="width:30%; text-align:right;"><b>製表日：</b>${new Date().toLocaleDateString('zh-TW')}</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-
+  // 渲染單一帳戶的「資料表格」（不含標題、簽名）
+  function renderAcctTable(acct){
+    const entries = filterEntries(acct);
+    let html = `
        <table class="data-table">
           <thead>
             <tr>
               <th style="width: 12%;">日期</th>
               <th style="width: 18%;">科目</th>
-              <th style="width: 42%;">摘要說明</th>
-              <th style="width: 14%;">收入金額</th>
-              <th style="width: 14%;">支出金額</th>
-              <th style="width: 16%;">結存餘額</th>
+              <th style="width: 38%;">摘要說明</th>
+              <th style="width: 12%;">收入金額</th>
+              <th style="width: 12%;">支出金額</th>
+              <th style="width: 14%;">結存餘額</th>
             </tr>
           </thead>
           <tbody>
     `;
-
     let running = 0;
     entries.forEach(e => {
       let inc = '', exp = '';
@@ -1700,8 +1705,7 @@ function exportPDF() {
       else if (e.type === 'income') { running += e.amount; inc = e.amount; }
       else { running -= e.amount; exp = e.amount; }
 
-      // 💡 這裡同步拿掉了 <td> 類型 </td> 的那一行
-      printContent += `
+      html += `
         <tr>
           <td class="text-center">${storageToDisplay(e.date) || ''}</td>
           <td>${e.subj || ''}</td>
@@ -1713,14 +1717,12 @@ function exportPDF() {
       `;
     });
 
-    // 計算合計
     const totalIn  = entries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
     const totalOut = entries.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
 
-    // 插入合計列 (colspan 從 4 改為 3，因為少了一欄)
-    printContent += `
+    html += `
           <tr class="total-row">
-            <td colspan="3" class="text-right">本月合計 單位小計：</td>
+            <td colspan="3" class="text-right">本期合計 單位小計：</td>
             <td class="text-right">${totalIn > 0 ? totalIn.toLocaleString('zh-TW') : ''}</td>
             <td class="text-right">${totalOut > 0 ? totalOut.toLocaleString('zh-TW') : ''}</td>
             <td class="text-right">${running.toLocaleString('zh-TW')}</td>
@@ -1728,16 +1730,36 @@ function exportPDF() {
         </tbody>
       </table>
     `;
+    return html;
+  }
 
-    // 顯示定期存款部分（僅主帳戶顯示）
-    if (RA.includes(acct)) {
-      const noteMap = {};
-      db.fixed.forEach(f => { 
-        if (!noteMap[f.key]) noteMap[f.key] = ''; 
-        noteMap[f.key] += (noteMap[f.key] ? '、' : '') + f.note; 
-      });
+  function renderHeader(acctLabel){
+    return `
+        <table class="title-table">
+          <tr><td class="main-title">北極殿 帳務明細報表</td></tr>
+          <tr class="subtitle-row">
+            <td>
+              <table style="width:100%;">
+                <tr>
+                  <td style="width:30%;"><b>帳戶：</b>${acctLabel}</td>
+                  <td style="width:40%; text-align:center;"><b>期間：</b>${periodStr}</td>
+                  <td style="width:30%; text-align:right;"><b>製表日：</b>${new Date().toLocaleDateString('zh-TW')}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+    `;
+  }
 
-      printContent += `
+  // 定存／特殊科目區塊（只會輸出一次）
+  function renderFixedSection(){
+    const noteMap = {};
+    db.fixed.forEach(f => {
+      if (!noteMap[f.key]) noteMap[f.key] = '';
+      noteMap[f.key] += (noteMap[f.key] ? '、' : '') + f.note;
+    });
+    return `
         <div class="fixed-section">
           <div style="font-weight:bold; border-bottom:1px solid #000; width:150px; padding-bottom:3px;">■ 定期存款與特殊科目</div>
           <table class="fixed-table">
@@ -1748,11 +1770,16 @@ function exportPDF() {
           </table>
           <div class="grand-total">A ＋ B ＋ C ＋ D ＋ E ＝ ${grand.toLocaleString('zh-TW')} 元</div>
         </div>
-      `;
-    }
+    `;
+  }
 
-    // 插入完全等寬 4 格手寫簽名方框
-    printContent += `
+  // 簽名欄區塊（只會輸出一次）
+  function renderSignSection(isJijin){
+    let t1 = isJijin ? '基金會董事長' : '主 委 ';
+    let t2 = isJijin ? '基金會監事' : '監 委 ';
+    let t3 = isJijin ? '基金會出納' : '出 納 ';
+    let t4 = isJijin ? '基金會會計' : '會 計 ';
+    return `
         <table class="sign-container">
           <tr>
             <td class="sign-box"><div class="sign-title">${t1}</div><div class="sign-space"></div></td>
@@ -1761,10 +1788,54 @@ function exportPDF() {
             <td class="sign-box"><div class="sign-title">${t4}</div><div class="sign-space"></div></td>
           </tr>
         </table>
-        
+    `;
+  }
+
+  // 3. 開始分頁產出
+  const isJijinOnly = acctsToPrint.length === 1 && acctsToPrint[0] === 'jijin';
+
+  if (isJijinOnly) {
+    // 基金會：獨立一頁，含定存區與專屬簽名
+    printContent += `
+      <div class="report-page">
+        ${renderHeader('基金會')}
+        ${renderAcctTable('jijin')}
+        ${renderSignSection(true)}
       </div>
     `;
-  });
+  } else {
+    // 一般帳戶：依序輸出，最後一頁附上定存區與簽名（只出現一次）
+    const pages = [];
+
+    // 第一頁：農會 + 台企 整合
+    const pairAccts = PAIR_LEFT.filter(a => acctsToPrint.includes(a));
+    if (pairAccts.length > 0) {
+      let pageHtml = renderHeader(pairAccts.map(a=>ACCT_LABELS[a]).join('、'));
+      pairAccts.forEach(a => {
+        pageHtml += `<div class="acct-block-title">${ACCT_LABELS[a]}</div>`;
+        pageHtml += renderAcctTable(a);
+      });
+      pages.push(pageHtml);
+    }
+
+    // 其餘帳戶（如零用金）各自一頁
+    acctsToPrint.filter(a => !PAIR_LEFT.includes(a)).forEach(a => {
+      let pageHtml = renderHeader(ACCT_LABELS[a]);
+      pageHtml += renderAcctTable(a);
+      pages.push(pageHtml);
+    });
+
+    if (pages.length === 0) {
+      pages.push(renderHeader('（無資料）') + '<p style="text-align:center;color:#999;">查詢區間內無資料</p>');
+    }
+
+    // 將定存區與簽名欄附加在最後一頁
+    pages[pages.length - 1] += renderFixedSection() + renderSignSection(false);
+
+    pages.forEach(p => {
+      printContent += `<div class="report-page">${p}</div>`;
+    });
+  }
 
   printContent += `</body></html>`;
 
@@ -1772,8 +1843,7 @@ function exportPDF() {
   const printWindow = window.open('', '_blank');
   printWindow.document.write(printContent);
   printWindow.document.close();
-  
-  // 給瀏覽器一點時間加載樣式後立刻喚醒列印
+
   printWindow.setTimeout(function() {
     printWindow.print();
     printWindow.close();
@@ -1849,7 +1919,7 @@ function applyRolePermissions() {
   injectTemplateStyles('');
 
   // ═══ 情況 A：一般訪客（最高機密防線：只能查，絕不能動） ═════════════════════════════
-  if (role === '訪客') {
+  if (role === '一般') {
     // 🔒 防線 1：只准保留 'query' (查詢) 分頁，其他分頁一律消失
     allTabs.forEach(btn => {
       const tab = btn.getAttribute('data-tab') || '';
@@ -1943,8 +2013,8 @@ async function initializeSystem() {
 
 // ─── 修改：具有權限檢查功能的 Tab 切換 ─────────────────────────
 function switchTab(name) {
-  const role = localStorage.getItem('beiji_user_role') || '訪客';
-  if (role === '訪客' && name !== 'query' && name !== 'report') {
+  const role = localStorage.getItem('beiji_user_role') || '一般';
+  if (role === '一般' && name !== 'query' && name !== 'report') {
     alert('您的權限層級無法存取記帳功能。');
     return;
   }
