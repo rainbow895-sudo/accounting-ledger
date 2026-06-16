@@ -924,9 +924,7 @@ function editRowInline(acct, id, btn) {
   
   tr.classList.add('is-editing');
   
-  // 先從 currentAddedEntries 找（本次新增），找不到再從 db（歷史資料）找
-  const item = currentAddedEntries[acct].find(e => e.id === id)
-            || db[acct].find(e => e.id === id);
+  const item = currentAddedEntries[acct].find(e => e.id === id);
   if (!item) return;
 
   const dateTd = tr.querySelector('.cell-date');
@@ -974,8 +972,7 @@ async function saveRowInline(acct, id, btn) {
   setStatus('loading', '雲端資料原地修改中...');
 
   try {
-    const oldItem = currentAddedEntries[acct].find(e => e.id === id)
-                 || db[acct].find(e => e.id === id);
+    const oldItem = currentAddedEntries[acct].find(e => e.id === id);
     if (!oldItem) throw new Error("找不到原始資料");
 
     // 💡【正統調用】直接發送 edit 指令給後端，把所有新資料與原本的 ID 扔過去
@@ -1051,41 +1048,7 @@ async function addFixed(){
 }
 
 async function removeFixed(id){
-  const role = localStorage.getItem('beiji_user_role') || '訪客';
-  
-  if (role === '會計') {
-    // 會計：不能真正刪除，改為新增一筆負值沖銷記錄，並要求填寫原因
-    const reason = prompt('請輸入沖銷原因（必填）：');
-    if (reason === null) return; // 取消
-    if (!reason.trim()) { alert('沖銷原因不能空白！'); return; }
-    
-    const target = db.fixed.find(e => e.id === id);
-    if (!target) return;
-    
-    try {
-      const res = await gsReq({
-        action: 'add',
-        date: target.month,
-        subj: target.key,
-        note: `【沖銷】${reason}`,
-        type: '收入',
-        amount: String(-target.amount),  // 負值沖銷
-        acct: '定存特殊'
-      });
-      if(res.error) throw new Error(res.error);
-      db.fixed.push({ id: String(res.id), month: target.month, key: target.key, amount: -target.amount, note: `【沖銷】${reason}` });
-      db.fixed.sort((a,b)=>a.month.localeCompare(b.month)||a.key.localeCompare(b.key));
-      renderFixed();
-      setStatus('ok','已新增沖銷記錄');
-    } catch(e){
-      alert('沖銷失敗：'+e.message);
-      setStatus('err','沖銷失敗');
-    }
-    return;
-  }
-  
-  // 管理員：可真正刪除
-  if(!confirm('確定刪除？此動作無法復原。')) return;
+  if(!confirm('確定刪除？')) return;
   try {
     const res = await gsReq({ action: 'delete', id: String(id) });
     if(res.error) throw new Error(res.error);
@@ -1309,12 +1272,11 @@ function renderAcct(acct){
 
 // ── Fixed ─────────────────────────────────────────────────
 function renderFixed(){
-  // 💡 同科目加總（而非後蓋前），確保多筆同科目記錄正確累計
-  const totals={B:0,C:0,D:0,E:0};
-  db.fixed.forEach(f=>{ if(totals[f.key]!==undefined) totals[f.key]+=f.amount; });
-  const total=Object.values(totals).reduce((s,v)=>s+v,0);
+  const latest={B:0,C:0,D:0,E:0};
+  db.fixed.forEach(f=>{ latest[f.key]=f.amount; });
+  const total=Object.values(latest).reduce((s,v)=>s+v,0);
   document.getElementById('fixed-stats').innerHTML=
-    Object.keys(totals).map(k=>`<div class="sum-card"><div class="sum-label">${FIXED_LABELS[k]}</div><div class="sum-value b">${fmtMoney(totals[k])}</div></div>`).join('')+
+    Object.keys(latest).map(k=>`<div class="sum-card"><div class="sum-label">${FIXED_LABELS[k]}</div><div class="sum-value b">${fmtMoney(latest[k])}</div></div>`).join('')+
     `<div class="sum-card hl"><div class="sum-label"><i class="ti ti-sigma"></i>小計</div><div class="sum-value">${fmtMoney(total)}</div></div>`;
   const tbody=document.getElementById('fx-tbody');
   if(db.fixed.length===0){tbody.innerHTML=`<tr><td colspan="5"><div class="empty-state"><i class="ti ti-inbox"></i><p>尚無資料</p></div></td></tr>`;return;}
@@ -1334,9 +1296,8 @@ function getAcctBal(acct){
   return r;
 }
 function getFixedLatest(){
-  // 💡 同科目加總，避免多筆記錄被後蓋前
   const l={B:0,C:0,D:0,E:0};
-  db.fixed.forEach(f=>{ if(l[f.key]!==undefined) l[f.key]+=f.amount; });
+  db.fixed.forEach(f=>{ l[f.key]=f.amount; });
   return l;
 }
 // ── 補全 Report 渲染邏輯 ────────────────────────────────
@@ -1352,7 +1313,7 @@ function renderReport() {
   let html = `
     <div class="summary-row">
       <div class="sum-card hl"><div class="sum-label">總資產 (A+B+C+D+E)</div><div class="sum-value" style="font-size:22px">${fmtMoney(grand)}</div></div>
-      <div class="sum-card"><div class="sum-label">流動現金 A（農會＋台企＋零用金）</div><div class="sum-value b">${fmtMoney(A)}</div></div>
+      <div class="sum-card"><div class="sum-label">流動現金 (A)</div><div class="sum-value b">${fmtMoney(A)}</div></div>
     </div>
     <div class="report-grid">
       <div class="rcard">
@@ -1360,7 +1321,6 @@ function renderReport() {
         <div class="rrow"><span class="rl">農會儲簿</span><span class="rv">${fmtMoney(bals.nonghu)}</span></div>
         <div class="rrow"><span class="rl">台企儲簿</span><span class="rv">${fmtMoney(bals.taiqiye)}</span></div>
         <div class="rrow"><span class="rl">零用金</span><span class="rv">${fmtMoney(bals.lingyon)}</span></div>
-        <div class="rrow" style="font-weight:700;border-top:1px solid var(--paper-dark);margin-top:4px;padding-top:4px;"><span class="rl">A 合計</span><span class="rv">${fmtMoney(A)}</span></div>
         <div class="divider"></div>
         <div class="rrow"><span class="rl">台企定期(B)</span><span class="rv">${fmtMoney(B)}</span></div>
         <div class="rrow"><span class="rl">農會定期(C)</span><span class="rv">${fmtMoney(C)}</span></div>
