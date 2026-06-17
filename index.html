@@ -848,12 +848,12 @@ async function loadFromGS(){
         acct: row.acct||''
       });
     });
-    db.fixed.sort((a,b)=>a.month.localeCompare(b.month)||a.key.localeCompare(b.key));
+    db.fixed.sort((a,b)=>String(a.month||'').localeCompare(String(b.month||''))||String(a.key||'').localeCompare(String(b.key||'')));
     ACCT_KEYS.forEach(a=>sortEntries(db[a]));
     setStatus('ok','✓ 已同步');
     return true;
   } catch(err){
-    console.warn('Google Sheets 連線失敗:', err.message);
+    console.error('Google Sheets 連線失敗:', err.message, err.stack);
     setStatus('err','同步失敗－請重試');
     return false;
   }
@@ -1038,7 +1038,7 @@ async function addFixed(){
     if(res.error) throw new Error(res.error);
 
     db.fixed.push({ id: String(res.id), month, key, amount, note });
-    db.fixed.sort((a,b)=>a.month.localeCompare(b.month)||a.key.localeCompare(b.key));
+    db.fixed.sort((a,b)=>String(a.month||'').localeCompare(String(b.month||''))||String(a.key||'').localeCompare(String(b.key||'')));
     renderFixed();
     document.getElementById('fx-amount').value='';
     document.getElementById('fx-note').value='';
@@ -1051,7 +1051,7 @@ async function addFixed(){
 }
 
 async function removeFixed(id){
-  const role = localStorage.getItem('beiji_user_role') || '一般';
+  const role = localStorage.getItem('beiji_user_role') || '訪客';
   
   if (role === '會計') {
     // 會計：不能真正刪除，改為新增一筆負值沖銷記錄，並要求填寫原因
@@ -1074,7 +1074,7 @@ async function removeFixed(id){
       });
       if(res.error) throw new Error(res.error);
       db.fixed.push({ id: String(res.id), month: target.month, key: target.key, amount: -target.amount, note: `【沖銷】${reason}` });
-      db.fixed.sort((a,b)=>a.month.localeCompare(b.month)||a.key.localeCompare(b.key));
+      db.fixed.sort((a,b)=>String(a.month||'').localeCompare(String(b.month||''))||String(a.key||'').localeCompare(String(b.key||'')));
       renderFixed();
       setStatus('ok','已新增沖銷記錄');
     } catch(e){
@@ -1276,7 +1276,7 @@ function renderAcct(acct){
     return;
   }
   
-  const role = localStorage.getItem('beiji_user_role') || window.userRole || '一般';
+  const role = localStorage.getItem('beiji_user_role') || window.userRole || '訪客';
 
   // 5. 開始畫明細表格（只含當月，含即時滾算結存）
   tbody.innerHTML = currentMonthRows.map(r => {
@@ -1492,7 +1492,7 @@ function runQuery(){
     }
     
     // 💡 取得當前登入使用者的職稱權限
-    const role = localStorage.getItem('beiji_user_role') || window.userRole || '一般';
+    const role = localStorage.getItem('beiji_user_role') || window.userRole || '訪客';
 
     const typeTag = t => t === 'income' ? '<span class="tag in">收入</span>' : t === 'expense' ? '<span class="tag out">支出</span>' : '<span class="tag prev">結存</span>';
     
@@ -1868,7 +1868,7 @@ function exportPDF() {
       </div>
     `;
   } else {
-    // 一般帳戶：依序輸出，最後一頁附上定存區與簽名（只出現一次）
+    // 訪客帳戶：依序輸出，最後一頁附上定存區與簽名（只出現一次）
     const pages = [];
 
     // 第一頁：農會 + 台企 整合
@@ -1969,7 +1969,7 @@ function exportPDF() {
 
 // ─── 修改後的權限套用函式 ─────────────────────────────────────
 function applyRolePermissions() {
-  const role = localStorage.getItem('beiji_user_role') || window.userRole || '一般';
+  const role = localStorage.getItem('beiji_user_role') || window.userRole || '訪客';
   console.log("正在套用權限，當前角色為:", role);
   
   // 1. 還原所有分頁按鈕顯示狀態
@@ -1982,8 +1982,8 @@ function applyRolePermissions() {
   // 清除上一次的強制隱藏樣式
   injectTemplateStyles('');
 
-  // ═══ 情況 A：一般訪客（最高機密防線：只能查，絕不能動） ═════════════════════════════
-  if (role === '一般') {
+  // ═══ 情況 A：訪客訪客（最高機密防線：只能查，絕不能動） ═════════════════════════════
+  if (role === '訪客') {
     // 🔒 防線 1：只准保留 'query' (查詢) 分頁，其他分頁一律消失
     allTabs.forEach(btn => {
       const tab = btn.getAttribute('data-tab') || '';
@@ -2062,8 +2062,8 @@ async function initializeSystem() {
     if (success) {
       setStatus('ok', '同步完成');
       // 問題2：查詢分頁移到最後，預設開啟零用金分頁
-      const role = localStorage.getItem('beiji_user_role') || '一般';
-      const defaultTab = role === '一般' ? 'query' : 'lingyon';
+      const role = localStorage.getItem('beiji_user_role') || '訪客';
+      const defaultTab = role === '訪客' ? 'query' : 'lingyon';
       switchTab(defaultTab);
       if (defaultTab === 'query' && typeof runQuery === 'function') {
         runQuery();
@@ -2077,8 +2077,8 @@ async function initializeSystem() {
 
 // ─── 修改：具有權限檢查功能的 Tab 切換 ─────────────────────────
 function switchTab(name) {
-  const role = localStorage.getItem('beiji_user_role') || '一般';
-  if (role === '一般' && name !== 'query' && name !== 'report') {
+  const role = localStorage.getItem('beiji_user_role') || '訪客';
+  if (role === '訪客' && name !== 'query' && name !== 'report') {
     alert('您的權限層級無法存取記帳功能。');
     return;
   }
