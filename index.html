@@ -425,13 +425,13 @@ tr:hover td {
 </header>
 
 <nav class="tabs-bar mobile-tabs-scroll">
-  <button class="tab-btn active" onclick="switchTab('query')" data-tab="query"><i class="ti ti-search" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>查詢</button>
-  <button class="tab-btn" onclick="switchTab('lingyon')" data-tab="lingyon"><i class="ti ti-wallet" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>零用金（採購）</button>
+  <button class="tab-btn active" onclick="switchTab('lingyon')" data-tab="lingyon"><i class="ti ti-wallet" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>零用金（採購）</button>
   <button class="tab-btn" onclick="switchTab('nonghu')" data-tab="nonghu"><i class="ti ti-pig-money" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>農會儲簿</button>
   <button class="tab-btn" onclick="switchTab('taiqiye')" data-tab="taiqiye"><i class="ti ti-building-bank" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>台企儲簿</button>
   <button class="tab-btn" onclick="switchTab('fixed')" data-tab="fixed"><i class="ti ti-lock" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>定存 / 特殊</button>
   <button class="tab-btn" onclick="switchTab('report')" data-tab="report"><i class="ti ti-chart-bar" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>月報總表</button>
   <button class="tab-btn" onclick="switchTab('jijin')" data-tab="jijin"><i class="ti ti-star" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>基金會</button>
+  <button class="tab-btn" onclick="switchTab('query')" data-tab="query"><i class="ti ti-search" style="font-size:13px;vertical-align:-2px;margin-right:3px"></i>查詢</button>
 </nav>
 
 <main class="main">
@@ -1051,7 +1051,7 @@ async function addFixed(){
 }
 
 async function removeFixed(id){
-  const role = localStorage.getItem('beiji_user_role') || '訪客';
+  const role = localStorage.getItem('beiji_user_role') || '一般';
   
   if (role === '會計') {
     // 會計：不能真正刪除，改為新增一筆負值沖銷記錄，並要求填寫原因
@@ -1276,7 +1276,7 @@ function renderAcct(acct){
     return;
   }
   
-  const role = localStorage.getItem('beiji_user_role') || window.userRole || '訪客';
+  const role = localStorage.getItem('beiji_user_role') || window.userRole || '一般';
 
   // 5. 開始畫明細表格（只含當月，含即時滾算結存）
   tbody.innerHTML = currentMonthRows.map(r => {
@@ -1492,7 +1492,7 @@ function runQuery(){
     }
     
     // 💡 取得當前登入使用者的職稱權限
-    const role = localStorage.getItem('beiji_user_role') || window.userRole || '訪客';
+    const role = localStorage.getItem('beiji_user_role') || window.userRole || '一般';
 
     const typeTag = t => t === 'income' ? '<span class="tag in">收入</span>' : t === 'expense' ? '<span class="tag out">支出</span>' : '<span class="tag prev">結存</span>';
     
@@ -1799,16 +1799,40 @@ function exportPDF() {
       if (!noteMap[f.key]) noteMap[f.key] = '';
       noteMap[f.key] += (noteMap[f.key] ? '、' : '') + f.note;
     });
+    // A 值 = 農會 + 台企 + 零用金
+    const aVal = RA.reduce((s,a) => s + getAcctBal(a), 0);
+    const bVal = fixed['B']||0;
+    const cVal = fixed['C']||0;
+    const dVal = fixed['D']||0;
+    const eVal = fixed['E']||0;
     return `
         <div class="fixed-section">
-          <div style="font-weight:bold; border-bottom:1px solid #000; width:150px; padding-bottom:3px;">■ 定期存款與特殊科目</div>
-          <table class="fixed-table">
-            <tr><td>台企定期（B）</td><td>${noteMap['B'] || ''}</td><td class="text-right">${(fixed['B']||0).toLocaleString('zh-TW')}</td></tr>
-            <tr><td>農會定期（C）</td><td>${noteMap['C'] || ''}</td><td class="text-right">${(fixed['C']||0).toLocaleString('zh-TW')}</td></tr>
-            <tr><td>金龜現金（D）</td><td>${noteMap['D'] || ''}</td><td class="text-right">${(fixed['D']||0).toLocaleString('zh-TW')}</td></tr>
-            <tr><td>信徒借款（E）</td><td>${noteMap['E'] || ''}</td><td class="text-right">${(fixed['E']||0).toLocaleString('zh-TW')}</td></tr>
+          <table style="width:100%; border-collapse:collapse; margin-bottom:8px;">
+            <tr>
+              <td style="width:50%; vertical-align:top;">
+                <div style="font-weight:bold; border-bottom:1px solid #000; padding-bottom:3px; margin-bottom:6px;">■ 流動資金（A）</div>
+                <table style="width:100%; border-collapse:collapse;">
+                  <tr><td>農會儲簿</td><td style="text-align:right;">${getAcctBal('nonghu').toLocaleString('zh-TW')}</td></tr>
+                  <tr><td>台企儲簿</td><td style="text-align:right;">${getAcctBal('taiqiye').toLocaleString('zh-TW')}</td></tr>
+                  <tr><td>零用金（採購）</td><td style="text-align:right;">${getAcctBal('lingyon').toLocaleString('zh-TW')}</td></tr>
+                  <tr style="font-weight:bold; border-top:1px solid #000;"><td>A 合計</td><td style="text-align:right;">${aVal.toLocaleString('zh-TW')}</td></tr>
+                </table>
+              </td>
+              <td style="width:4%;"></td>
+              <td style="width:46%; vertical-align:top;">
+                <div style="font-weight:bold; border-bottom:1px solid #000; padding-bottom:3px; margin-bottom:6px;">■ 定期存款與特殊科目</div>
+                <table style="width:100%; border-collapse:collapse;">
+                  <tr><td>台企定期（B）</td><td>${noteMap['B'] || ''}</td><td style="text-align:right;">${bVal.toLocaleString('zh-TW')}</td></tr>
+                  <tr><td>農會定期（C）</td><td>${noteMap['C'] || ''}</td><td style="text-align:right;">${cVal.toLocaleString('zh-TW')}</td></tr>
+                  <tr><td>金龜現金（D）</td><td>${noteMap['D'] || ''}</td><td style="text-align:right;">${dVal.toLocaleString('zh-TW')}</td></tr>
+                  <tr><td>信徒借款（E）</td><td>${noteMap['E'] || ''}</td><td style="text-align:right;">${eVal.toLocaleString('zh-TW')}</td></tr>
+                </table>
+              </td>
+            </tr>
           </table>
-          <div class="grand-total">A ＋ B ＋ C ＋ D ＋ E ＝ ${grand.toLocaleString('zh-TW')} 元</div>
+          <div class="grand-total" style="border-top:2px solid #000; padding-top:6px;">
+            A（${aVal.toLocaleString('zh-TW')}）＋ B（${bVal.toLocaleString('zh-TW')}）＋ C（${cVal.toLocaleString('zh-TW')}）＋ D（${dVal.toLocaleString('zh-TW')}）＋ E（${eVal.toLocaleString('zh-TW')}）＝ ${grand.toLocaleString('zh-TW')} 元
+          </div>
         </div>
     `;
   }
@@ -1844,7 +1868,7 @@ function exportPDF() {
       </div>
     `;
   } else {
-    // 訪客帳戶：依序輸出，最後一頁附上定存區與簽名（只出現一次）
+    // 一般帳戶：依序輸出，最後一頁附上定存區與簽名（只出現一次）
     const pages = [];
 
     // 第一頁：農會 + 台企 整合
@@ -1945,7 +1969,7 @@ function exportPDF() {
 
 // ─── 修改後的權限套用函式 ─────────────────────────────────────
 function applyRolePermissions() {
-  const role = localStorage.getItem('beiji_user_role') || window.userRole || '訪客';
+  const role = localStorage.getItem('beiji_user_role') || window.userRole || '一般';
   console.log("正在套用權限，當前角色為:", role);
   
   // 1. 還原所有分頁按鈕顯示狀態
@@ -1958,8 +1982,8 @@ function applyRolePermissions() {
   // 清除上一次的強制隱藏樣式
   injectTemplateStyles('');
 
-  // ═══ 情況 A：訪客訪客（最高機密防線：只能查，絕不能動） ═════════════════════════════
-  if (role === '訪客') {
+  // ═══ 情況 A：一般訪客（最高機密防線：只能查，絕不能動） ═════════════════════════════
+  if (role === '一般') {
     // 🔒 防線 1：只准保留 'query' (查詢) 分頁，其他分頁一律消失
     allTabs.forEach(btn => {
       const tab = btn.getAttribute('data-tab') || '';
@@ -2027,21 +2051,21 @@ async function initializeSystem() {
   // 2. 載入定存快取 (如果原本系統有這個函式)
   if (typeof loadFixed === 'function') loadFixed(); 
   
-  // 3. 【核心修正】同步雲端帳簿明細 + 科目清單（並行執行加快速度）
+  // 3. 同步雲端帳簿明細 + 科目清單（各自獨立，互不影響）
   if (typeof loadFromGS === 'function') {
     setStatus('loading', '雲端資料同步中...');
-    
-    // 科目清單與帳務資料並行載入
-    const [success] = await Promise.all([
-      loadFromGS(),
-      loadSubjects(),
-    ]);
-    
+
+    // 兩者並行，但各自的成敗互不干擾
+    const success = await loadFromGS();
+    loadSubjects(); // 科目清單失敗只是用預設值，不阻斷流程，不用 await
+
     if (success) {
       setStatus('ok', '同步完成');
-      switchTab('query');
-      if (typeof runQuery === 'function') {
-        console.log("雲端資料下載完畢，開始預設查詢...");
+      // 問題2：查詢分頁移到最後，預設開啟零用金分頁
+      const role = localStorage.getItem('beiji_user_role') || '一般';
+      const defaultTab = role === '一般' ? 'query' : 'lingyon';
+      switchTab(defaultTab);
+      if (defaultTab === 'query' && typeof runQuery === 'function') {
         runQuery();
       }
     } else {
@@ -2053,8 +2077,8 @@ async function initializeSystem() {
 
 // ─── 修改：具有權限檢查功能的 Tab 切換 ─────────────────────────
 function switchTab(name) {
-  const role = localStorage.getItem('beiji_user_role') || '訪客';
-  if (role === '訪客' && name !== 'query' && name !== 'report') {
+  const role = localStorage.getItem('beiji_user_role') || '一般';
+  if (role === '一般' && name !== 'query' && name !== 'report') {
     alert('您的權限層級無法存取記帳功能。');
     return;
   }
