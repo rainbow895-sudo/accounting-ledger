@@ -761,7 +761,7 @@ function normalizeToStorage(dateStr){
   let yNum = parseInt(y, 10);
   if (isNaN(yNum)) return d;
   // 民國年（小於1911）→ 轉西元
-  if (yNum < 1911) yNum += 1911;
+  if (yNum < 200) yNum += 1911;
   m = String(parseInt(m,10)).padStart(2,'0');
   day = String(parseInt(day,10)).padStart(2,'0');
   return `${yNum}/${m}/${day}`;
