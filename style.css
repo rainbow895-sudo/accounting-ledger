@@ -1,0 +1,453 @@
+
+    /* ─── 1. 權限登入全螢幕遮罩樣式 ─── */
+    .login-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #1A1209; display: flex; align-items: center; justify-content: center;
+      z-index: 9999; padding: 1rem; box-sizing: border-box;
+    }
+    .login-box {
+      background: #FBF6EC; border: 2px solid #B8972A; border-radius: 6px;
+      padding: 2.5rem 2rem; width: 100%; max-width: 360px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      text-align: center; box-sizing: border-box;
+    }
+    .login-title {
+      font-size: 22px; font-weight: 700; color: #3D2E0F;
+      margin-bottom: 5px; letter-spacing: 0.1em;
+    }
+    .login-subtitle {
+      font-size: 13px; color: #7A621C; margin-bottom: 2rem;
+    }
+    .login-box .fg { margin-bottom: 0.8rem; text-align: left; }
+    .login-box label { display: block; font-size: 13px; color: #3D2E0F; margin-bottom: 4px; font-weight: 600; }
+    .login-box input { 
+      width: 100%; height: 38px; text-align: center; font-size: 15px; 
+      border: 1px solid #7A621C; border-radius: 4px; background: #fff; box-sizing: border-box;
+    }
+    .login-btn { 
+      width: 100%; height: 42px; font-size: 15px; margin-top: 0.5rem; 
+      background: #B8972A; color: #fff; border: none; border-radius: 4px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600;
+    }
+    .login-btn:hover { background: #7A621C; }
+    .login-err { color: #C0392B; font-size: 13px; margin-top: 0.8rem; min-height: 18px; font-weight: 500; }
+
+    /* ─── 2. 您原本系統的完整主樣式 (已幫您將打碎的樣式整理回這裡) ─── */
+    *, *:before, *:after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { 
+      --gold: #B8972A; --gold-light: #F0D980; --gold-dim: #7A621C; 
+      --ink: #1A1209; --ink-mid: #3D2E0F; --ink-soft: #7A6440; 
+      --paper: #FBF6EC; --paper-mid: #F2E8D0; --paper-dark: #E4D5B0; 
+      --bg: #EDE3CC; --green: #1A6B3C; --green-light: #EBF5EE; 
+      --blue: #1A3A6B; --blue-light: #EBEFF5; --red: #C0392B; --red-light: #FDEBE8; 
+      --shadow: 0 2px 12px rgba(60,60,10,0.12); --radius: 6px; 
+      --serif: 'Noto Serif TC', serif; --sans: 'Noto Sans TC', sans-serif; 
+    }
+    body { font-family: var(--sans); background: var(--bg); color: var(--ink); min-height: 100vh; }
+
+    /* ─── 補回遺失的網頁主體排版與核心 CSS ─── */
+*, *:before, *:after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root { 
+  --gold: #B8972A; --gold-light: #F0D980; --gold-dim: #7A621C; 
+  --ink: #1A1209; --ink-mid: #3D2E0F; --ink-soft: #7A6440; 
+  --paper: #FBF6EC; --paper-mid: #F2E8D0; --paper-dark: #E4D5B0; 
+  --bg: #EDE3CC; --green: #1A6B3C; --green-light: #EBF5EE; 
+  --blue: #1A3A6B; --blue-light: #EBEFF5; --red: #C0392B; --red-light: #FDEBE8; 
+  --shadow: 0 2px 12px rgba(60,60,10,0.12); --radius: 6px; 
+  --serif: 'Noto Serif TC', serif; --sans: 'Noto Sans TC', sans-serif; 
+}
+
+body { font-family: var(--sans); background: var(--bg); color: var(--ink); min-height: 100vh; padding: 0; margin: 0; }
+
+/* 頂部標題列 */
+.site-header { 
+  background: var(--ink); padding: 0 2rem; display: flex; align-items: center; 
+  justify-content: space-between; height: 58px; border-bottom: 2px solid var(--gold); 
+}
+.site-logo { font-family: var(--serif); font-size: 19px; font-weight: 700; color: var(--gold-light); letter-spacing: .1em; display: flex; align-items: center; gap: 10px; }
+.logo-wrap { display: flex; flex-direction: row; align-items: baseline; gap: 6px; }
+.logo-main { font-size: 19px; font-weight: 700; }
+.logo-sub  { font-size: 19px; font-weight: 700; }
+@media screen and (max-width: 768px) {
+  .logo-wrap { flex-direction: column; gap: 0; line-height: 1.25; }
+  .logo-main { font-size: 15px; }
+  .logo-sub  { font-size: 11px; font-weight: 400; opacity: 0.78; letter-spacing: 0.06em; }
+}
+.sync-status { font-size: 12px; display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(240,217,128,.3); color: rgba(240,217,128,.7); white-space: nowrap; }
+
+/* 導覽功能分頁列 */
+.tabs-bar { background: var(--ink-mid); display: flex; align-items: center; gap: 2px; padding: 0 2rem; overflow-x: auto; border-bottom: 2px solid transparent; transition: all .15s; }
+.tab-btn { background: transparent; border: none; color: rgba(240,217,128,.55); cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; transition: all .15s; padding: 10px 16px; font-size: 13px; font-family: var(--sans); font-weight: 500; }
+.tab-btn:hover { color: var(--gold-light); }
+.tab-btn.active { color: var(--gold-light); border-bottom-color: var(--gold); font-weight: 700; }
+
+/* 主要內容區域 */
+main { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.summary-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+.sum-card { background: var(--paper); border: 1px solid var(--paper-dark); border-radius: var(--radius); padding: 1rem 1.25rem; box-shadow: var(--shadow); }
+.sum-label { font-size: 11px; color: var(--ink-soft); display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+.sum-value { font-family: var(--serif); font-size: 18px; font-weight: 700; color: var(--ink); }
+
+/* 按鈕基本樣式 */
+.btn { font-size: 13px; height: 31px; border-radius: var(--radius); border: 1px solid var(--paper-dark); background: var(--paper); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; padding: 0 13px; font-family: var(--sans); transition: all .15s; white-space: nowrap; text-decoration: none; }
+.btn:hover { background: var(--paper-mid); }
+.btn.primary { background: var(--gold); color: #fff; border-color: var(--gold); font-weight: 600; }
+.btn.primary:hover { background: var(--ink); }
+
+ /* ─── 補回遺失的查詢區域與表格專用 CSS ─── */
+
+/* 查詢表單格線排版 */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  background: var(--paper);
+  border: 1px solid var(--paper-dark);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  box-shadow: var(--shadow);
+  margin-bottom: 1.5rem;
+  align-items: flex-end; /* 讓按鈕與輸入框底部對齊 */
+}
+
+/* 表單內部的輸入欄位群組 */
+.fg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fg label {
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+/* 輸入框、下拉選單的基本樣式優化 */
+.fg input, .fg select, .search-bar input {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--paper-dark);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.fg input:focus, .fg select:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(184,151,42,.15);
+}
+
+/* 關鍵字搜尋列專用 */
+.search-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+/* 查詢結果與表格外框 */
+.panel-title {
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gold-dim);
+  margin-bottom: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  background: var(--paper);
+  border: 1px solid var(--paper-dark);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-top: 0.5rem;
+}
+
+/* 表格本體 */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+th {
+  background: var(--paper-mid);
+  color: var(--ink-mid);
+  font-weight: 700;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--paper-dark);
+  white-space: nowrap;
+}
+
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--paper-mid);
+  color: var(--ink);
+  vertical-align: middle;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover td {
+  background: var(--paper-light);
+}
+
+/* 查無資料的提示樣式 */
+.empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--ink-soft);
+  font-size: 13px;
+} 
+
+/* ─── 📱 手機版專屬：頂部分頁導覽列橫向滑動優化 ─── */
+
+/* 電腦版維持預設排列 */
+.tabs-bar.mobile-tabs-scroll {
+  display: flex;
+  flex-wrap: nowrap;
+}
+
+/* ─── 📱 手機版專屬：查詢結果表格「局部橫向滑動」防跑偏防折行 ─── */
+@media screen and (max-width: 768px) {
+  
+  /* 1. 讓包裹表格的外層容器（您原本就有寫的 table-wrap）在手機上可以左右滑動 */
+  .table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch; /* 讓 iPhone 滑起來有流暢的阻尼彈性 */
+    border: 1px solid #e0e0e0;          /* 幫表格加個淡淡的邊框，讓邊界更明顯 */
+    margin-bottom: 15px;
+  }
+
+  /* 2. 強制表格內所有欄位文字「絕對不准折行」，有多少欄就往右邊鋪多長 */
+  .table-wrap table th,
+  .table-wrap table td {
+    white-space: nowrap !important;
+    padding: 10px 8px !important;    /* 給手指頭足夠的點擊空間 */
+    font-size: 14px !important;
+  }
+
+  /* 3. 當點擊編輯（is-editing）變身輸入框時，維持橫向表格，只把輸入框寬度定死 */
+  /* 這樣既不會把上下其他行撐開，也不會導致排版跑偏 */
+  .table-wrap tr.is-editing input {
+    width: 90px !important;          /* 限制手機上表格內輸入框的寬度 */
+    height: 30px !important;
+    font-size: 14px !important;      
+    padding: 2px 4px !important;
+    box-sizing: border-box !important;
+    border: 1px solid #ccc !important;
+    border-radius: 4px !important;
+  }
+  
+  /* 針對摘要備註通常字比較多，可以讓輸入框稍微寬一點 */
+  .table-wrap tr.is-editing td.qcell-note input {
+    width: 120px !important;
+  }
+}
+    /* ─── 📱 手機版專屬：頂部系統標題防擠壓重疊 ─── */
+@media screen and (max-width: 768px) {
+  
+  /* 1. 調整最外層的 Header 容器，讓它在手機上有足夠的高度伸展 */
+  header, .header, div[style*="background"] {
+    height: auto !important;          /* 取消固定高度，改由內容自動撐開 */
+    padding: 12px 8px !important;     /* 給上下留點舒適的內距 */
+  }
+
+  /* ========================================== */
+  /* 🎯 2. 修正大標題：精準強制拆成兩行（九肉北極殿 / 帳務管理系統） */
+  /* ========================================== */
+  header h1, .header-title, h1, h2 {
+    font-size: 15px !important;       /* 第一行「九肉北極殿」的大小 */
+    font-weight: bold !important;
+    line-height: 1.3 !important;      /* 微調行高，讓兩行更緊湊美觀 */
+    margin: 0 0 8px 0 !important;     /* 與下方的按鈕群留出乾淨的距離 */
+    display: block !important;
+    width: 100% !important;
+  }
+
+  /* 💡 核心魔法：利用關鍵字「帳務管理系統」前面強制斷行，並縮小字體營造層次感 */
+  header h1::after, .header-title::after, h1::after, h2::after {
+    content: "\A 帳務管理系統" !important; /* \A 代表換行 */
+    white-space: pre-wrap !important;    /* 讓換行符號生效 */
+    font-size: 12px !important;          /* 第二行稍微縮小，更有精緻感 */
+    color: #dfdfdf !important;           /* 微調成溫和的淺灰色 */
+    font-weight: normal !important;
+  }
+
+  /* 3. 讓「同步完成」和「匯出 Excel」按鈕群在手機上整齊並排或靠右 */
+  .header-actions, div[style*="flex"] {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;              /* 按鈕之間的微小間距 */
+  }
+  
+  /* 縮小按鈕內的字體與圖示，防撐爆 */
+  header .btn, header button {
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+  }
+}
+/* ─── 💻 電腦版：只針對「查詢明細分頁」的篩選欄位完美拉直鋪滿 ─── */
+.search-bar {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 10px !important;
+  width: 100% !important;
+  margin-bottom: 16px !important; 
+}
+
+.search-bar select {
+  height: 36px !important;
+  min-width: 110px !important;
+}
+
+.mobile-date-range-row {
+  display: flex !important;
+  gap: 8px !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+}
+
+.mobile-date-range-row .date-item input {
+  width: 140px !important; 
+}
+
+/* 關鍵字搜尋欄：自動吃掉剩下所有寬度 */
+.search-bar .search-keyword {
+  flex: 1 !important;        
+  min-width: 200px !important;
+}
+
+/* ─── 📊 統計卡片專屬：用唯一的 ID 精準控制，絕不波及其他分頁的卡片 ─── */
+#query-stats {
+  width: 100% !important;
+  margin-top: 15px !important;
+  margin-bottom: 15px !important;
+  /* 💡 只對查詢分頁的 grid 生效，讓它出來時自動變 3 欄橫排 */
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 15px !important;
+}
+
+/* ─── 📱 手機版專屬 RWD 響應式排版 ─── */
+@media screen and (max-width: 768px) {
+  .search-bar {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .search-bar select {
+    flex: 1 !important;
+    min-width: calc(50% - 4px) !important;
+  }
+
+  .mobile-date-range-row {
+    width: 100% !important;
+  }
+
+  .mobile-date-range-row .date-item {
+    flex: 1 !important;
+  }
+
+  .mobile-date-range-row .date-item input {
+    width: 100% !important;
+  }
+
+  .search-bar .search-keyword {
+    width: 100% !important;
+    flex: none !important;
+  }
+
+  /* 手機版：查詢分頁的卡片降回 1 欄垂直堆疊 */
+  #query-stats {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+}
+
+    /* 預設：電腦端（寬螢幕）的優雅一字橫排配置 */
+    .q-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+      width: 100%;
+    }
+    .q-field-acct { flex: 1; min-width: 120px; }
+    .q-field-type { flex: 1; min-width: 110px; }
+    .q-field-dates { display: flex; gap: 10px; flex: 2; min-width: 290px; }
+    .q-field-keyword { flex: 3; min-width: 220px; }
+    .q-field-btn { min-width: 120px; }
+
+    /* 📱 關鍵核心：當螢幕寬度小於 768px（手機/平板直向）時的極致調校 */
+    @media (max-width: 767px) {
+      .q-container {
+        display: block !important; /* 取消彈性橫排，改成直向依序落落大方 */
+        width: 100% !important;
+      }
+      /* 手機上，帳戶、類型、關鍵字搜尋各自獨立一整行，寬度 100% 飽滿 */
+      .q-field-acct, .q-field-type, .q-field-keyword, .q-field-btn {
+        width: 100% !important;
+        margin-bottom: 14px !important;
+      }
+      /* 日期容器在手機上強制維持 Flex 並排，絕不上下錯開 */
+      .q-field-dates {
+        display: flex !important;
+        gap: 12px !important; /* 起始與結束中間的呼吸黃金間距 */
+        width: 100% !important;
+        margin-bottom: 14px !important;
+      }
+      /* 讓起始日期和結束日期在手機上精確各佔 50% */
+      .q-field-dates > div {
+        flex: 1 !important;
+        width: 50% !important;
+      }
+      /* 查詢按鈕在手機上變成滿版大按鈕，超級好按 */
+      .q-field-btn {
+        max-width: 100% !important;
+        margin-bottom: 0 !important;
+        margin-top: 5px !important;
+      }
+    }
+
+    /* 統一加大手機端輸入框與選單的觸控飽滿度 (42px高、14px字) */
+    .q-input-style {
+      height: 42px !important;
+      width: 100% !important;
+      padding: 0 12px !important;
+      border: 1px solid var(--paper-dark, #e0e0e0) !important;
+      border-radius: var(--radius, 8px) !important;
+      background: var(--paper, #ffffff) !important;
+      color: var(--ink, #000000) !important;
+      font-size: 14px !important;
+      font-family: var(--sans) !important;
+      outline: none !important;
+      box-sizing: border-box !important;
+      -webkit-appearance: none !important; /* 消除iOS強制扁平內陰影 */
+      appearance: none !important;
+    }
+    .q-input-style:focus {
+      border-color: var(--gold, #bfa15f) !important;
+    }
+    .q-label-style {
+      font-size: 13px !important;
+      color: var(--ink-soft, #666666) !important;
+      font-weight: bold !important;
+      margin-bottom: 6px !important;
+      display: block !important;
+    }
