@@ -12,12 +12,15 @@ let SUBJ_OPTIONS = {
   jijin:   ['利息收入','信徒捐款收入','活動收入','補助款收','廟務借款'],
 };
 
+// ── 科目 → 收入/支出 對照表（從科目清單 C 欄載入）──────────
+// 格式：SUBJ_TYPE_MAP[acctKey][科目名稱] = 'income' | 'expense'
+let SUBJ_TYPE_MAP = { lingyon: {}, nonghu: {}, taiqiye: {}, jijin: {} };
+
 async function loadSubjects() {
   try {
     const res = await gsReq({ action: 'getSubjects' });
-    if (res.error || !res.subjects) return; // 失敗時保留預設清單
-    const map = res.subjects; // { '零用金（採購）': [...], '農會儲簿': [...], ... }
-    // 將試算表帳戶標籤對應到前端 acct key
+    if (res.error || !res.subjects) return;
+    const map = res.subjects;
     const keyMap = {
       '零用金（採購）': 'lingyon',
       '農會儲簿':       'nonghu',
@@ -26,23 +29,56 @@ async function loadSubjects() {
     };
     Object.entries(keyMap).forEach(([label, key]) => {
       if (map[label] && map[label].length > 0) {
-        SUBJ_OPTIONS[key] = map[label];
+        if (typeof map[label][0] === 'object') {
+          // 新格式：GAS 回傳 {name, type}
+          SUBJ_OPTIONS[key] = map[label].map(o => o.name);
+          SUBJ_TYPE_MAP[key] = {};
+          map[label].forEach(o => {
+            SUBJ_TYPE_MAP[key][o.name] = o.type === '收入' ? 'income' : 'expense';
+          });
+        } else {
+          // 舊格式：字串陣列，維持向下相容
+          SUBJ_OPTIONS[key] = map[label];
+        }
       }
     });
-    // 載入後重刷所有已渲染的科目選單
     refreshAllSubjSelects();
   } catch(e) {
     console.warn('科目清單載入失敗，使用預設值:', e.message);
   }
 }
 
+// 選科目後自動更新 badge 與 hidden type
+function onSubjChange(acct) {
+  const subjEl = document.getElementById(acct + '-subj');
+  if (!subjEl) return;
+  const subj = subjEl.value;
+  const type = (SUBJ_TYPE_MAP[acct] || {})[subj];
+  const hidden = document.getElementById(acct + '-type');
+  if (hidden && type !== undefined) hidden.value = type;
+  const badge = document.getElementById(acct + '-type-badge');
+  if (badge) {
+    if (type === 'income') {
+      badge.className = 'type-badge income';
+      badge.textContent = '收入';
+    } else if (type === 'expense') {
+      badge.className = 'type-badge expense';
+      badge.textContent = '支出';
+    } else {
+      badge.className = 'type-badge unknown';
+      badge.textContent = '—';
+    }
+  }
+}
+
 function buildSubjSelect(acct) {
   const opts = (SUBJ_OPTIONS[acct] || []).map(o => `<option value="${o}">${o}</option>`).join('');
-  return `<select id="${acct}-subj" data-subj-acct="${acct}" style="height:34px;padding:0 8px;border:1px solid var(--paper-dark);border-radius:var(--radius);background:var(--paper);color:var(--ink);font-size:13px;font-family:var(--sans);width:100%;">${opts}</select>`;
+  return `<select id="${acct}-subj" data-subj-acct="${acct}"
+    onchange="onSubjChange('${acct}')"
+    style="height:34px;padding:0 8px;border:1px solid var(--paper-dark);border-radius:var(--radius);background:var(--paper);color:var(--ink);font-size:13px;font-family:var(--sans);width:100%;">${opts}</select>`;
 }
 
 function refreshAllSubjSelects() {
-  // 重刷畫面上所有已存在的科目選單（不重建整個 tab，避免清空輸入中的資料）
   document.querySelectorAll('select[data-subj-acct]').forEach(sel => {
     const acct = sel.getAttribute('data-subj-acct');
     const cur = sel.value;
@@ -50,6 +86,7 @@ function refreshAllSubjSelects() {
       `<option value="${o}"${o === cur ? ' selected' : ''}>${o}</option>`
     ).join('');
     sel.innerHTML = opts;
+    onSubjChange(acct); // 同步更新 badge
   });
 }
 var p = null; // 👈 【大補帖】直接在全域宣告 p
@@ -232,7 +269,9 @@ async function addEntry(acct){
   const date   = getDateVal(acct);
   const subj   = document.getElementById(acct+'-subj').value.trim();
   const note   = document.getElementById(acct+'-note').value.trim();
-  const type   = document.getElementById(acct+'-type').value;
+  // 從隱藏欄位取類型（由 onSubjChange 根據科目清單 C 欄自動寫入）
+  const typeEl = document.getElementById(acct+'-type');
+  const type   = typeEl ? typeEl.value : 'expense';
   const amount = parseFloat(document.getElementById(acct+'-amount').value);
   if(!date||!subj||isNaN(amount)||amount<0){ alert('請填寫科目／商家與金額'); return; }
   const btn=document.getElementById(acct+'-add-btn');
@@ -468,12 +507,12 @@ function buildAcctTab(acct){
           <div class="fg" style="min-width:170px"><label>日期</label>${buildRocDatePicker(acct)}</div>
           <div class="fg" style="min-width:120px"><label>科目</label>${buildSubjSelect(acct)}</div>
           <div class="fg" style="min-width:120px"><label>摘要</label><input type="text" id="${acct}-note" placeholder="詳細說明" onkeydown="if(event.key==='Enter') addEntry('${acct}')"/></div>
-          <div class="fg"><label>類型</label>
-            <select id="${acct}-type">
-              <option value="income">${m.incLabel}</option>
-              <option value="expense">${m.expLabel}</option>
-              <option value="prev">上期結存</option>
-            </select>
+          <div class="fg" style="min-width:60px">
+            <label>類型</label>
+            <div style="display:flex;align-items:center;height:34px;">
+              <span id="${acct}-type-badge" class="type-badge unknown">—</span>
+            </div>
+            <input type="hidden" id="${acct}-type" value="expense"/>
           </div>
           <div class="fg"><label>金額</label><input type="number" id="${acct}-amount" placeholder="0" min="0" inputmode="numeric" pattern="[0-9]*" onkeydown="if(event.key==='Enter') addEntry('${acct}')"/></div>
           <div class="fg"><label>&nbsp;</label><button class="btn primary" id="${acct}-add-btn" onclick="addEntry('${acct}')"><i class="ti ti-plus"></i>新增</button></div>
@@ -499,9 +538,10 @@ function buildAcctTab(acct){
     </div>`;
 }
 
-ACCT_KEYS.forEach(a=>{ document.getElementById('tab-'+a).innerHTML=buildAcctTab(a); });
-// init hidden date values
-// ACCT_KEYS.forEach(a=>syncDate(a));
+ACCT_KEYS.forEach(a=>{
+  document.getElementById('tab-'+a).innerHTML=buildAcctTab(a);
+  setTimeout(() => onSubjChange(a), 0); // 渲染後立即初始化 badge
+});
 
 // ── Tabs ──────────────────────────────────────────────────
 function switchTab(name){
